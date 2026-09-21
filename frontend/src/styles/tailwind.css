@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fundo da página (várias camadas de degradê idêntico ao modelo) */
+.bg-page {
+  background-color: #E9EFFB;
+  background-image:
+    radial-gradient(55% 50% at 4% 0%, rgba(245,184,46,.5), transparent 62%),
+    radial-gradient(55% 55% at 100% 8%, rgba(120,160,240,.55), transparent 62%),
+    radial-gradient(60% 55% at 92% 100%, rgba(70,110,200,.4), transparent 66%),
+    radial-gradient(55% 55% at 0% 100%, rgba(150,180,240,.5), transparent 66%);
+  background-attachment: fixed;
+}
+
+@layer components {
+  /* Vidro (liquid glass) */
+  .glass {
+    @apply border border-white/90 bg-gradient-to-br from-white/90 to-white/60 backdrop-blur-[24px] backdrop-saturate-150
+           shadow-[inset_0_1px_0_#fff,0_22px_44px_-32px_rgba(10,31,68,.35)];
+  }
+
+  /* Ícones de traço */
+  .ico {
+    @apply h-5 w-5 flex-none fill-none stroke-current;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Botão dourado */
+  .btn-gold {
+    @apply relative inline-flex h-[42px] cursor-pointer items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-[14px] border-0 px-4 text-[.92rem] font-bold text-navy-deep
+           bg-[linear-gradient(120deg,#F5B82E_0%,#FFD65A_45%,#F5B82E_72%,#E2A11B_100%)]
+           shadow-[0_12px_22px_-12px_rgba(154,106,18,.85),inset_0_-2px_0_rgba(154,106,18,.35),inset_0_1px_0_rgba(255,255,255,.7)]
+           before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/50 before:to-transparent before:content-['']
+           hover:brightness-105 active:scale-[0.98] transition
+           focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-navy disabled:cursor-progress disabled:saturate-[.85];
+  }
+  .btn-gold > * {
+    position: relative;
+    z-index: 10;
+  }
+
+  /* Botão com borda */
+  .btn-line {
+    @apply inline-flex h-[38px] cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-navy/10 bg-white/80 px-4 text-[.88rem] font-semibold text-navy
+           hover:border-navy/30 hover:bg-white active:scale-[0.98] transition
+           focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-gold;
+  }
+
+  /* Botão de ícone */
+  .icon-btn {
+    @apply grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] border-0 bg-transparent text-navy hover:bg-navy/[.07]
+           focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-gold;
+  }
+
+  /* Botão redondo de vidro (topo) */
+  .round {
+    @apply glass relative grid h-11 w-11 cursor-pointer place-items-center rounded-[14px] text-navy hover:bg-white
+           focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-gold;
+  }
+
+  /* Link sublinhado dourado */
+  .link {
+    @apply cursor-pointer border-0 bg-transparent p-0 text-[.86rem] font-semibold text-navy underline decoration-gold decoration-2 underline-offset-4 hover:text-gold-deep
+           focus-visible:rounded focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-gold;
+  }
+
+  /* Item do menu lateral */
+  .menu-link {
+    @apply relative flex items-center gap-3 rounded-2xl px-3.5 py-[11px] font-medium text-[#3E4C6B] no-underline transition
+           hover:bg-navy/5 hover:text-navy md:max-xl:justify-center md:max-xl:px-0
+           focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-gold;
+  }
+  .menu-link[aria-current="page"], .menu-link.active {
+    @apply font-bold text-navy bg-gradient-to-br from-gold-light/55 to-gold/30
+           shadow-[inset_0_1px_0_rgba(255,255,255,.8),0_8px_18px_-12px_rgba(154,106,18,.6)]
+           before:absolute before:-left-2.5 before:bottom-3 before:top-3 before:w-1 before:rounded-r before:bg-gold before:content-[''] xl:before:-left-3.5;
+  }
+
+  /* Pílulas */
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[.78rem] font-bold;
+  }
+
+  /* Barra de progresso */
+  .bar {
+    @apply mt-1.5 h-2 overflow-hidden rounded-full bg-navy/10;
+  }
+  .bar > i {
+    @apply block h-full rounded-full bg-gradient-to-r from-gold-light to-gold transition-all duration-500;
+  }
+  .bar.navy > i {
+    @apply from-blue-light to-navy-soft;
+  }
+
+  /* Cartão de bloco */
+  .card {
+    @apply glass min-w-0 rounded-[22px] p-[18px] md:rounded-[26px] md:p-[22px];
+  }
+  .card-title {
+    @apply m-0 text-[1.05rem] font-bold tracking-[-.01em];
+  }
+  .card-sub {
+    @apply mb-0 mt-0.5 text-[.85rem] text-muted;
+  }
+
+  /* Caixinha */
+  .box {
+    @apply flex min-w-0 flex-col rounded-[22px] border border-white/95 bg-white/75 p-4 shadow-[inset_0_1px_0_#fff,0_14px_26px_-22px_rgba(10,31,68,.4)];
+  }
+  .tile {
+    @apply grid h-[42px] w-[42px] place-items-center rounded-[14px];
+  }
+  .amt {
+    @apply text-[1.25rem] font-extrabold leading-tight tracking-[-.025em] whitespace-nowrap;
+  }
+  .amt small {
+    @apply mr-0.5 text-[.62em] font-bold text-[#3E4C6B];
+  }
+  .note {
+    @apply mt-2.5 text-[.8rem] leading-snug text-muted;
+  }
+  .note b {
+    @apply font-semibold text-navy;
+  }
+
+  /* Abas de período */
+  .tab {
+    @apply cursor-pointer rounded-[10px] border-0 bg-transparent px-[13px] py-1.5 text-[.84rem] font-semibold text-[#3E4C6B]
+           aria-selected:bg-navy aria-selected:text-white aria-selected:shadow-[0_6px_14px_-8px_rgba(10,31,68,.8)]
+           focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-gold;
+  }
+}
