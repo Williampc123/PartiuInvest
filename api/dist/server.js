@@ -10,7 +10,7 @@ const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const env_js_1 = require("./config/env.js");
 const routes_js_1 = require("./modules/auth/routes.js");
 const routes_js_2 = require("./modules/families/routes.js");
-const routes_js_3 = require("./modules/open-finance/routes.js");
+// import { openFinanceRoutes } from './modules/open-finance/routes.js';
 const app = (0, express_1.default)();
 // Middlewares de Segurança
 app.use((0, helmet_1.default)());
@@ -39,7 +39,7 @@ app.get('/health', (_req, res) => {
 // Rotas Versionadas
 app.use('/v1/auth', routes_js_1.authRoutes);
 app.use('/v1/families', routes_js_2.familyRoutes);
-app.use('/v1/open-finance', routes_js_3.openFinanceRoutes);
+// app.use('/v1/open-finance', openFinanceRoutes);
 // Iniciar Servidor
 const PORT = env_js_1.env.PORT;
 app.listen(PORT, () => {

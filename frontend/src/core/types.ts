@@ -57,6 +57,16 @@ export interface BoxGoal {
   icon?: string;
 }
 
+export interface FinancialCategory {
+  id: string;
+  name: string;
+  type: 'expense' | 'income' | 'both';
+  icon: string;
+  color?: string;
+  isCustom?: boolean;
+  createdAt?: string;
+}
+
 export interface FinancialTransaction {
   id: string;
   accountId: string;
@@ -70,6 +80,10 @@ export interface FinancialTransaction {
   isRecurring?: boolean;
   recurrenceFrequency?: 'mensal' | 'semanal' | 'quinzenal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual';
   recurrenceEndMonth?: string;
+  installmentNumber?: number;
+  totalInstallments?: number;
+  isPaid?: boolean;
   source: 'manual' | 'open_finance';
   createdAt?: string;
 }
+

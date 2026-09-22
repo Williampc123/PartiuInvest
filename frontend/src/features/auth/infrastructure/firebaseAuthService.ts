@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '@/infrastructure/firebase/firebase';
 import { UserProfile, FamilyMember, BoxGoal, BankAccount } from '@/core/types';
+import { DEFAULT_CATEGORIES } from '@/core/categories';
 
 export interface RegisterFamilyParams {
   name: string;
@@ -201,6 +202,20 @@ export async function registerFamilyAndHead(
       icon: 'plane',
     };
     batch.set(box3Ref, { ...box3, createdAt: nowIso });
+
+    // Salvar todas as categorias padrão diretamente no Firestore
+    DEFAULT_CATEGORIES.forEach((cat) => {
+      const catRef = doc(collection(db, `families/${familyId}/categories`), cat.id);
+      batch.set(catRef, {
+        id: cat.id,
+        name: cat.name,
+        type: cat.type,
+        icon: cat.icon,
+        color: cat.color,
+        isCustom: true,
+        createdAt: nowIso,
+      });
+    });
 
     // Firestore aceita batch offline e enfileira
     batch.commit().catch(() => {});

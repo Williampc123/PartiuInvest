@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OpenFinanceModal } from '@/features/open-finance/presentation/components/OpenFinanceModal';
+// import { OpenFinanceModal } from '@/features/open-finance/presentation/components/OpenFinanceModal';
 import { useAppStore } from '@/features/auth/useAppStore';
 import {
   Building2,
@@ -16,42 +16,18 @@ import {
 import { Money } from '@/core/Money';
 import { BankAccount, FamilyMember } from '@/core/types';
 import {
-  addBankAccountToFirestore,
   deleteBankAccountFromFirestore,
   updateBankAccountInFirestore,
 } from '@/features/dashboard/infrastructure/firestoreDataService';
+import { NewAccountModal } from '@/features/accounts/presentation/components/NewAccountModal';
 
 export const AccountsPage: React.FC = () => {
   const { accounts, familyMembers, selectedMemberId, user, setAccounts } = useAppStore();
-  const [isOpenFinanceOpen, setIsOpenFinanceOpen] = useState(false);
+  // const [isOpenFinanceOpen, setIsOpenFinanceOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  // Formulário de Conta Manual
-  const [manualName, setManualName] = useState('');
-  const [manualBank, setManualBank] = useState('Nubank');
-  const [manualBalanceStr, setManualBalanceStr] = useState('');
-  const [manualType, setManualType] = useState<'checking' | 'savings' | 'credit_card' | 'investment'>('checking');
-  const [manualMemberId, setManualMemberId] = useState(user?.memberId || '');
-  const [manualVisibility, setManualVisibility] = useState<'family' | 'private'>('family');
-  const [isSavingManual, setIsSavingManual] = useState(false);
-
-  const availableBanks = [
-    { name: 'Nubank', color: '#8A05BE' },
-    { name: 'Itaú Unibanco', color: '#EC7000' },
-    { name: 'Banco Inter', color: '#FF7A00' },
-    { name: 'Bradesco', color: '#CC092F' },
-    { name: 'Banco do Brasil', color: '#0038A8' },
-    { name: 'Santander', color: '#E50000' },
-    { name: 'C6 Bank', color: '#1B1B1B' },
-    { name: 'BTG Pactual', color: '#001E62' },
-    { name: 'Caixa Econômica', color: '#005CA9' },
-    { name: 'XP Investimentos', color: '#0A1F44' },
-    { name: 'Nomad', color: '#FFD700' },
-    { name: 'Sofisa Direto', color: '#FF5000' },
-  ];
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -63,7 +39,7 @@ export const AccountsPage: React.FC = () => {
     : accounts.filter((a: BankAccount) => a.ownerMemberId === selectedMemberId);
 
   const totalBalanceCents = filteredAccounts.reduce((acc: number, curr: BankAccount) => acc + curr.balanceCents, 0);
-  const openFinanceCount = filteredAccounts.filter((a) => a.source === 'open_finance').length;
+  // const openFinanceCount = filteredAccounts.filter((a) => a.source === 'open_finance').length;
   const manualCount = filteredAccounts.filter((a) => a.source !== 'open_finance').length;
 
   // Sincronizar todas as contas
@@ -110,40 +86,6 @@ export const AccountsPage: React.FC = () => {
     }
   };
 
-  // Salvar conta manual
-  const handleSaveManual = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.familyId) return;
-
-    const bankObj = availableBanks.find((b) => b.name === manualBank) || availableBanks[0];
-    const cleanStr = manualBalanceStr.replace(/\./g, '').replace(',', '.');
-    const balanceCents = Math.round((parseFloat(cleanStr) || 0) * 100);
-
-    setIsSavingManual(true);
-    try {
-      const created = await addBankAccountToFirestore(user.familyId, {
-        ownerMemberId: manualMemberId || user.memberId,
-        visibility: manualVisibility,
-        name: manualName || `Conta ${bankObj.name}`,
-        type: manualType,
-        source: 'manual',
-        institutionName: bankObj.name,
-        balanceCents,
-        color: bankObj.color,
-      });
-
-      setAccounts([...accounts, created]);
-      setIsManualModalOpen(false);
-      setManualName('');
-      setManualBalanceStr('');
-      showToast('Conta bancária manual cadastrada com sucesso!');
-    } catch (err) {
-      console.error('Erro ao cadastrar conta manual:', err);
-    } finally {
-      setIsSavingManual(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Toast Notification */}
@@ -161,9 +103,9 @@ export const AccountsPage: React.FC = () => {
             <Building2 className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-navy">Contas Bancárias & Open Finance</h2>
+            <h2 className="text-xl font-bold text-navy">Contas Bancárias</h2>
             <p className="text-xs text-muted">
-              Centralize instituições financeiras, saldos em tempo real e conexões Open Finance da família.
+              Centralize instituições financeiras, saldos e contas da família.
             </p>
           </div>
         </div>
@@ -178,7 +120,7 @@ export const AccountsPage: React.FC = () => {
             className="btn-line text-xs h-[38px] px-3 gap-1.5"
           >
             <RefreshCw className={`h-4 w-4 ${syncingAll ? 'animate-spin text-gold-deep' : ''}`} />
-            <span>{syncingAll ? 'Sincronizando...' : 'Sincronizar Todas'}</span>
+            <span>{syncingAll ? 'Sincronizando...' : 'Atualizar Saldos'}</span>
           </button>
 
           {/* Cadastrar Manual */}
@@ -188,10 +130,10 @@ export const AccountsPage: React.FC = () => {
             className="btn-gold text-xs h-[38px] px-4 gap-1.5"
           >
             <Plus className="h-4 w-4" />
-            <span>Cadastrar Conta Manual</span>
+            <span>Cadastrar Conta Bancária</span>
           </button>
 
-          {/* Conectar Open Finance */}
+          {/* Open Finance desativado temporariamente
           <button
             type="button"
             onClick={() => setIsOpenFinanceOpen(true)}
@@ -200,11 +142,12 @@ export const AccountsPage: React.FC = () => {
             <Zap className="h-4 w-4 text-gold-deep" />
             <span>Conectar via Open Finance</span>
           </button>
+          */}
         </div>
       </div>
 
       {/* Cards de Métricas e Resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <div className="card !p-4 bg-gradient-to-br from-white/90 to-white/60">
           <small className="text-xs text-muted block">Saldo Total em Contas</small>
           <b className="text-2xl font-extrabold text-navy tracking-tight mt-0.5 block">
@@ -215,6 +158,7 @@ export const AccountsPage: React.FC = () => {
           </span>
         </div>
 
+        {/* Card Open Finance desativado temporariamente
         <div className="card !p-4 bg-gradient-to-br from-white/90 to-white/60">
           <small className="text-xs text-muted block">Open Finance Integrado</small>
           <div className="flex items-center gap-2 mt-0.5">
@@ -225,15 +169,16 @@ export const AccountsPage: React.FC = () => {
             Atualizações automáticas via Banco Central
           </span>
         </div>
+        */}
 
         <div className="card !p-4 bg-gradient-to-br from-white/90 to-white/60">
-          <small className="text-xs text-muted block">Contas Cadastradas Manualmente</small>
+          <small className="text-xs text-muted block">Total de Contas Cadastradas</small>
           <div className="flex items-center gap-2 mt-0.5">
-            <b className="text-2xl font-extrabold text-navy tracking-tight">{manualCount}</b>
+            <b className="text-2xl font-extrabold text-navy tracking-tight">{filteredAccounts.length}</b>
             <span className="pill bg-navy/5 text-navy text-[11px]">Gerenciamento livre</span>
           </div>
           <span className="text-[11px] text-muted mt-1 block">
-            Lançamentos e saldos controlados manualmente
+            Lançamentos e saldos controlados da família
           </span>
         </div>
       </div>
@@ -246,7 +191,7 @@ export const AccountsPage: React.FC = () => {
           </div>
           <h3 className="text-lg font-bold text-navy">Nenhuma conta bancária cadastrada</h3>
           <p className="text-xs text-muted max-w-md mx-auto">
-            Cadastre suas contas correntes, poupanças ou investimentos manualmente ou conecte seu banco via Open Finance.
+            Cadastre suas contas correntes, poupanças ou investimentos para acompanhar o saldo familiar.
           </p>
           <div className="flex justify-center gap-2 pt-2">
             <button
@@ -254,8 +199,9 @@ export const AccountsPage: React.FC = () => {
               className="btn-gold text-xs h-9 px-4 gap-1.5"
             >
               <Plus className="h-4 w-4" />
-              <span>Cadastrar Conta Manual</span>
+              <span>Cadastrar Conta Bancária</span>
             </button>
+            {/* Open Finance desativado temporariamente
             <button
               onClick={() => setIsOpenFinanceOpen(true)}
               className="btn-line text-xs h-9 px-4 gap-1.5"
@@ -263,6 +209,7 @@ export const AccountsPage: React.FC = () => {
               <Zap className="h-4 w-4" />
               <span>Conectar Open Finance</span>
             </button>
+            */}
           </div>
         </div>
       ) : (
@@ -297,9 +244,9 @@ export const AccountsPage: React.FC = () => {
                         type="button"
                         onClick={() => handleDeleteAccount(acc.id, acc.name)}
                         title="Excluir Conta"
-                        className="opacity-0 group-hover:opacity-100 transition p-1 hover:text-danger rounded-lg text-muted"
+                        className="sm:opacity-0 sm:group-hover:opacity-100 transition p-1.5 hover:text-danger rounded-lg text-muted hover:bg-danger/10 active:scale-95"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -356,6 +303,7 @@ export const AccountsPage: React.FC = () => {
                     <span>{isSyncingThis ? 'Sincronizando...' : 'Sincronizar'}</span>
                   </button>
 
+                  {/* Open Finance desativado temporariamente
                   {acc.source === 'open_finance' ? (
                     <span className="flex items-center gap-1 text-[11px] text-ok font-bold">
                       <ShieldCheck className="h-3.5 w-3.5" /> Conectado
@@ -369,6 +317,7 @@ export const AccountsPage: React.FC = () => {
                       Conectar Open Finance
                     </button>
                   )}
+                  */}
                 </div>
               </div>
             );
@@ -376,7 +325,7 @@ export const AccountsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Box de Segurança Open Finance */}
+      {/* Box de Segurança Open Finance desativado temporariamente
       <div className="rounded-2xl bg-navy/5 border border-navy/10 p-4 flex items-start gap-3 text-xs text-muted">
         <Lock className="h-5 w-5 text-navy-soft shrink-0 mt-0.5" />
         <div>
@@ -390,147 +339,21 @@ export const AccountsPage: React.FC = () => {
           </p>
         </div>
       </div>
+      */}
 
-      {/* Modal de Conexão Open Finance */}
+      {/* Modal de Conexão Open Finance desativado temporariamente
       <OpenFinanceModal
         isOpen={isOpenFinanceOpen}
         onClose={() => setIsOpenFinanceOpen(false)}
       />
+      */}
 
-      {/* Modal de Cadastro de Conta Manual */}
-      {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-deep/60 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="card w-full max-w-md bg-white border-white/95 shadow-2xl p-6 rounded-[28px] relative">
-            <button
-              type="button"
-              onClick={() => setIsManualModalOpen(false)}
-              className="absolute right-4 top-4 icon-btn text-muted hover:text-navy"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            <form onSubmit={handleSaveManual} className="space-y-4">
-              <div>
-                <h3 className="text-lg font-bold text-navy">Cadastrar Conta Bancária</h3>
-                <p className="text-xs text-muted">Adicione uma conta corrente, poupança ou investimentos</p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-navy mb-1">
-                  Instituição Financeira
-                </label>
-                <select
-                  value={manualBank}
-                  onChange={(e) => setManualBank(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                >
-                  {availableBanks.map((b) => (
-                    <option key={b.name} value={b.name}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-navy mb-1">
-                  Nome ou Apelido da Conta
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Conta Principal Nubank"
-                  value={manualName}
-                  onChange={(e) => setManualName(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-navy mb-1">
-                    Tipo de Conta
-                  </label>
-                  <select
-                    value={manualType}
-                    onChange={(e) => setManualType(e.target.value as any)}
-                    className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                  >
-                    <option value="checking">Conta Corrente</option>
-                    <option value="savings">Poupança</option>
-                    <option value="investment">Investimentos</option>
-                    <option value="credit_card">Cartão de Crédito</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-navy mb-1">
-                    Saldo Inicial (R$)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="0,00"
-                    value={manualBalanceStr}
-                    onChange={(e) => setManualBalanceStr(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-navy mb-1">
-                    Titular da Conta
-                  </label>
-                  <select
-                    value={manualMemberId}
-                    onChange={(e) => setManualMemberId(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                  >
-                    {familyMembers.map((m: FamilyMember) => (
-                      <option key={m.id} value={m.id}>
-                        {m.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-navy mb-1">
-                    Visibilidade
-                  </label>
-                  <select
-                    value={manualVisibility}
-                    onChange={(e) => setManualVisibility(e.target.value as any)}
-                    className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                  >
-                    <option value="family">Compartilhada</option>
-                    <option value="private">Individual</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-navy/10">
-                <button
-                  type="button"
-                  onClick={() => setIsManualModalOpen(false)}
-                  className="btn-line text-xs h-9 px-3"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingManual}
-                  className="btn-gold text-xs h-9 px-4"
-                >
-                  {isSavingManual ? 'Salvando...' : 'Cadastrar Conta'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Modal de Cadastro de Conta Bancária */}
+      <NewAccountModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+        onSuccess={() => showToast('Conta bancária cadastrada com sucesso!')}
+      />
     </div>
   );
 };

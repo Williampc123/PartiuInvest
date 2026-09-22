@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { formatPeriodLabel } from '@/core/dateUtils';
 import { PeriodSelectorModal } from './PeriodSelectorModal';
-import { Calendar } from 'lucide-react';
+import { Calendar, Menu } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
 
 interface HeaderProps {
   onOpenNewTransaction?: () => void;
+  onToggleMobileMenu?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenNewTransaction }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onOpenNewTransaction,
+  onToggleMobileMenu,
+}) => {
   const {
     user,
     familyName,
@@ -49,23 +54,44 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNewTransaction }) => {
 
   return (
     <header className="flex flex-col gap-3">
-      {/* Linha 1: Boas-vindas e Ações Globais */}
+      {/* Linha 1: Boas-vindas, Hambúrguer e Ações Globais */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 md:gap-3.5">
-        <div className="mr-auto min-w-full sm:min-w-[220px]">
-          <div className="flex items-center gap-2">
-            <h1 id="hello" className="m-0 text-[1.55rem] font-extrabold leading-[1.15] tracking-[-.025em] md:text-[1.85rem]">
-              Bom dia, {user?.displayName?.split(' ')[0] || 'Investidor'}
-            </h1>
-            {user?.role === 'chefe-familia' && (
-              <span className="pill bg-gold/25 text-[#7A4F08] border border-gold/40 text-[11px] font-bold">
-                👑 Painel do Chefe
-              </span>
-            )}
+        
+        {/* Bloco de Saudação com Botão Hambúrguer Mobile */}
+        <div className="flex items-center gap-2.5 mr-auto min-w-full sm:min-w-0 sm:flex-1">
+          {/* Botão Hambúrguer (Visível exclusivamente no Mobile) */}
+          <button
+            type="button"
+            onClick={onToggleMobileMenu}
+            aria-label="Abrir menu de navegação"
+            title="Abrir menu"
+            className="round !h-10 !w-10 md:hidden shrink-0 shadow-sm border border-gold/40 hover:bg-gold/15 active:scale-95 transition"
+          >
+            <Menu className="h-5 w-5 text-navy" />
+          </button>
+
+          {/* Logo Mobile Compacta */}
+          <NavLink to="/dashboard" className="md:hidden block shrink-0">
+            <img src="/icone-partiu-invest.png" alt="Partiu Invest" className="h-8 w-auto" />
+          </NavLink>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 id="hello" className="m-0 text-[1.35rem] sm:text-[1.55rem] font-extrabold leading-[1.15] tracking-[-.025em] md:text-[1.85rem] truncate">
+                Bom dia, {user?.displayName?.split(' ')[0] || 'Investidor'}
+              </h1>
+              {user?.role === 'chefe-familia' && (
+                <span className="pill bg-gold/25 text-[#7A4F08] border border-gold/40 text-[10px] sm:text-[11px] font-bold">
+                  👑 Chefe
+                </span>
+              )}
+            </div>
+            <p className="mb-0 mt-0.5 text-xs sm:text-sm text-muted truncate">
+              Exibindo: <strong className="text-navy">{activeName}</strong> ({activeRoleLabel})
+            </p>
           </div>
-          <p className="mb-0 mt-0.5 text-muted">
-            Exibindo: <strong className="text-navy">{activeName}</strong> ({activeRoleLabel})
-          </p>
         </div>
+
 
         {/* Seletor de Período Interativo */}
         <div role="group" aria-label="Período" className="glass order-3 flex h-11 items-center gap-1 rounded-[14px] p-1 md:order-none shadow-sm">

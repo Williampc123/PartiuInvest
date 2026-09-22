@@ -12,11 +12,91 @@ import {
   User,
   Wallet,
   CheckCircle2,
+  Plus,
+  Sparkles,
+  Info,
 } from 'lucide-react';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/infrastructure/firebase/firebase';
 import { useAppStore } from '@/features/auth/useAppStore';
-import { FamilyMember, BankAccount } from '@/core/types';
+import { FamilyMember, BankAccount, FinancialCategory } from '@/core/types';
+import { getCategoryIconComponent } from '@/core/categories';
+import { NewCategoryModal } from '@/features/categories/presentation/components/NewCategoryModal';
+import { NewAccountModal } from '@/features/accounts/presentation/components/NewAccountModal';
+
+export type RecurrenceFrequency =
+  | 'mensal'
+  | 'semanal'
+  | 'quinzenal'
+  | 'bimestral'
+  | 'trimestral'
+  | 'semestral'
+  | 'anual';
+
+export function calculateRecurrenceDates(
+  startDateStr: string,
+  frequency: RecurrenceFrequency,
+  endMonthStr?: string
+): string[] {
+  if (!startDateStr) return [];
+  if (!endMonthStr) return [startDateStr];
+
+  const [sYear, sMonth, sDay] = startDateStr.split('-').map(Number);
+  const [eYear, eMonth] = endMonthStr.split('-').map(Number);
+
+  if (isNaN(sYear) || isNaN(sMonth) || isNaN(sDay) || isNaN(eYear) || isNaN(eMonth)) {
+    return [startDateStr];
+  }
+
+  // Último milissegundo do mês final selecionado
+  const maxDate = new Date(eYear, eMonth, 0, 23, 59, 59, 999);
+  const startDate = new Date(sYear, sMonth - 1, sDay, 12, 0, 0);
+
+  if (startDate.getTime() > maxDate.getTime()) {
+    return [startDateStr];
+  }
+
+  const dates: string[] = [];
+  let k = 0;
+  const maxOccurrences = 240; // Limite de segurança de 240 parcelas
+
+  while (k < maxOccurrences) {
+    let nextDate: Date;
+
+    if (frequency === 'semanal') {
+      nextDate = new Date(sYear, sMonth - 1, sDay + k * 7, 12, 0, 0);
+    } else if (frequency === 'quinzenal') {
+      nextDate = new Date(sYear, sMonth - 1, sDay + k * 14, 12, 0, 0);
+    } else {
+      let monthStep = 1;
+      if (frequency === 'bimestral') monthStep = 2;
+      else if (frequency === 'trimestral') monthStep = 3;
+      else if (frequency === 'semestral') monthStep = 6;
+      else if (frequency === 'anual') monthStep = 12;
+
+      const totalTargetMonth = sMonth - 1 + k * monthStep;
+      const targetYear = sYear + Math.floor(totalTargetMonth / 12);
+      const targetMonth = totalTargetMonth % 12;
+      const maxDaysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+      const targetDay = Math.min(sDay, maxDaysInTargetMonth);
+
+      nextDate = new Date(targetYear, targetMonth, targetDay, 12, 0, 0);
+    }
+
+    if (nextDate.getTime() > maxDate.getTime()) {
+      break;
+    }
+
+    const yyyy = nextDate.getFullYear();
+    const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(nextDate.getDate()).padStart(2, '0');
+    dates.push(`${yyyy}-${mm}-${dd}`);
+
+    k++;
+  }
+
+  return dates.length > 0 ? dates : [startDateStr];
+}
 
 interface NewTransactionModalProps {
   isOpen: boolean;
@@ -24,7 +104,7 @@ interface NewTransactionModalProps {
 }
 
 export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen, onClose }) => {
-  const { user, familyMembers, accounts } = useAppStore();
+  const { user, familyMembers, accounts, categories } = useAppStore();
 
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [description, setDescription] = useState('');
@@ -34,38 +114,34 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
   const [selectedMemberId, setSelectedMemberId] = useState(user?.memberId || '');
   const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || 'wallet');
   const [isRecurring, setIsRecurring] = useState(false);
-  const [recurrenceFrequency, setRecurrenceFrequency] = useState<
-    'mensal' | 'semanal' | 'quinzenal' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'
-  >('mensal');
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState<RecurrenceFrequency>('mensal');
   const [recurrenceEndMonth, setRecurrenceEndMonth] = useState('');
   const [visibility, setVisibility] = useState<'family' | 'private'>('family');
+  const [isPaid, setIsPaid] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isNewCatModalOpen, setIsNewCatModalOpen] = useState(false);
+  const [isNewAccountModalOpen, setIsNewAccountModalOpen] = useState(false);
 
   if (!isOpen) return null;
 
-  const expenseCategories = [
-    'Moradia',
-    'Alimentação',
-    'Transporte',
-    'Lazer',
-    'Saúde',
-    'Educação',
-    'Contas Fixas',
-    'Outros',
-  ];
-
-  const incomeCategories = [
-    'Salário',
-    'Investimentos / Dividendos',
-    'Freelance / Serviços',
-    'Mesada / Presente',
-    'Outros',
-  ];
+  // Filtrar categorias aplicáveis ao tipo selecionado
+  const currentCategories = categories.filter(
+    (c) => c.type === 'both' || c.type === type
+  );
 
   const handleTypeChange = (newType: 'expense' | 'income') => {
     setType(newType);
-    setCategory(newType === 'expense' ? 'Alimentação' : 'Salário');
+    const firstCat = categories.find((c) => c.type === newType || c.type === 'both');
+    setCategory(firstCat ? firstCat.name : (newType === 'expense' ? 'Alimentação' : 'Salário'));
+  };
+
+  const handleCategoryCreated = (newCat: FinancialCategory) => {
+    setCategory(newCat.name);
+  };
+
+  const handleAccountCreated = (newAcc: BankAccount) => {
+    setSelectedAccountId(newAcc.id);
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +156,12 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
     return isNaN(num) ? 0 : Math.round(num * 100);
   };
 
+  const previewDates =
+    isRecurring && recurrenceEndMonth
+      ? calculateRecurrenceDates(date, recurrenceFrequency, recurrenceEndMonth)
+      : [];
+  const previewCount = previewDates.length;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountCents = parseAmountToCents(amountInput);
@@ -91,32 +173,52 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
     setLoading(true);
 
     try {
-      const transRef = doc(collection(db, `families/${user.familyId}/transactions`));
       const finalAmountCents = type === 'expense' ? -Math.abs(amountCents) : Math.abs(amountCents);
+      const isRecurringActive = isRecurring && Boolean(recurrenceEndMonth);
+      const recurrenceDates = isRecurringActive
+        ? calculateRecurrenceDates(date, recurrenceFrequency, recurrenceEndMonth)
+        : [date];
 
-      const payload: Record<string, any> = {
-        id: transRef.id,
-        accountId: selectedAccountId,
-        memberId: selectedMemberId || user.memberId,
-        visibility,
-        description: description.trim(),
-        amountCents: finalAmountCents,
-        category,
-        date,
-        type: isRecurring && type === 'expense' ? 'bill' : type,
-        isRecurring,
-        source: 'manual',
-        createdAt: new Date().toISOString(),
-      };
+      const totalInstallments = recurrenceDates.length;
+      const batch = writeBatch(db);
 
-      if (isRecurring) {
-        payload.recurrenceFrequency = recurrenceFrequency;
-        if (recurrenceEndMonth) {
-          payload.recurrenceEndMonth = recurrenceEndMonth;
+      recurrenceDates.forEach((recDate, index) => {
+        const transRef = doc(collection(db, `families/${user.familyId}/transactions`));
+        const installmentSuffix =
+          totalInstallments > 1 ? ` (${index + 1}/${totalInstallments})` : '';
+        const finalDescription = `${description.trim()}${installmentSuffix}`;
+
+        const payload: Record<string, any> = {
+          id: transRef.id,
+          accountId: selectedAccountId,
+          memberId: selectedMemberId || user.memberId,
+          visibility,
+          description: finalDescription,
+          amountCents: finalAmountCents,
+          category,
+          date: recDate,
+          type: isRecurring && type === 'expense' ? 'bill' : type,
+          isRecurring,
+          isPaid,
+          source: 'manual',
+          createdAt: new Date().toISOString(),
+        };
+
+        if (isRecurring) {
+          payload.recurrenceFrequency = recurrenceFrequency;
+          if (recurrenceEndMonth) {
+            payload.recurrenceEndMonth = recurrenceEndMonth;
+          }
+          if (totalInstallments > 1) {
+            payload.installmentNumber = index + 1;
+            payload.totalInstallments = totalInstallments;
+          }
         }
-      }
 
-      await setDoc(transRef, payload);
+        batch.set(transRef, payload);
+      });
+
+      await batch.commit();
 
       setSuccess(true);
       setTimeout(() => {
@@ -127,6 +229,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
         setIsRecurring(false);
         setRecurrenceFrequency('mensal');
         setRecurrenceEndMonth('');
+        setIsPaid(false);
       }, 1000);
     } catch (error) {
       console.error('Erro ao salvar movimentação no Firestore:', error);
@@ -243,17 +346,27 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-navy mb-1 flex items-center gap-1">
-                  <Tag className="h-3.5 w-3.5 text-muted" /> Categoria
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-navy flex items-center gap-1">
+                    <Tag className="h-3.5 w-3.5 text-muted" /> Categoria
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsNewCatModalOpen(true)}
+                    className="text-[11px] font-bold text-gold-deep hover:underline flex items-center gap-0.5"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>Nova</span>
+                  </button>
+                </div>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
+                  className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none font-medium"
                 >
-                  {(type === 'expense' ? expenseCategories : incomeCategories).map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
+                  {currentCategories.map((cat) => (
+                    <option key={cat.id} value={cat.name}>
+                      {cat.name}
                     </option>
                   ))}
                 </select>
@@ -280,13 +393,23 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-navy mb-1 flex items-center gap-1">
-                  <Wallet className="h-3.5 w-3.5 text-muted" /> Conta / Origem
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-navy flex items-center gap-1">
+                    <Wallet className="h-3.5 w-3.5 text-muted" /> Conta / Origem
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsNewAccountModalOpen(true)}
+                    className="text-[11px] font-bold text-gold-deep hover:underline flex items-center gap-0.5"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>Nova</span>
+                  </button>
+                </div>
                 <select
                   value={selectedAccountId}
                   onChange={(e) => setSelectedAccountId(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none"
+                  className="w-full h-11 px-3 rounded-xl border border-navy/15 bg-white text-sm text-navy focus:ring-2 focus:ring-gold focus:outline-none font-medium"
                 >
                   <option value="wallet">💵 Dinheiro em Espécie / Carteira</option>
                   {accounts.map((acc: BankAccount) => (
@@ -296,6 +419,34 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Status de Pagamento (Pago vs Pendente) */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-navy/5 border border-navy/10">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className={`h-4 w-4 ${isPaid ? 'text-ok' : 'text-muted'}`} />
+                <div>
+                  <b className="block text-xs text-navy">
+                    {type === 'income' ? 'Valor já recebido?' : 'Pagamento já realizado?'}
+                  </b>
+                  <small className="text-[10px] text-muted">
+                    {isPaid
+                      ? type === 'income' ? 'Consta como recebido no saldo' : 'Consta como quitado/pago'
+                      : type === 'income' ? 'Consta como a receber (previsto)' : 'Consta como pendente / a pagar'}
+                  </small>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPaid(!isPaid)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                  isPaid
+                    ? 'bg-ok text-white border-ok shadow-sm'
+                    : 'bg-amber-500/15 text-amber-700 border-amber-500/30'
+                }`}
+              >
+                {isPaid ? (type === 'income' ? '✓ Recebido' : '✓ Pago') : (type === 'income' ? '⏳ A receber' : '⏳ Pendente')}
+              </button>
             </div>
 
             {/* Bloco de Recorrência */}
@@ -353,6 +504,27 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
                       className="w-full h-10 px-3 rounded-xl border border-navy/15 bg-white text-xs font-semibold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
                     />
                   </div>
+
+                  {previewCount > 1 ? (
+                    <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-gold/15 border border-gold/30 text-[11px] text-navy font-medium flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-gold-deep shrink-0" />
+                      <span>
+                        Serão gerados <b>{previewCount} lançamentos</b> com parcelas automáticas:{' '}
+                        <span className="font-bold text-navy-soft">
+                          "{description.trim() || 'Lançamento'} (1/{previewCount})"
+                        </span>{' '}
+                        até{' '}
+                        <span className="font-bold text-navy-soft">
+                          "({previewCount}/{previewCount})"
+                        </span>.
+                      </span>
+                    </div>
+                  ) : !recurrenceEndMonth ? (
+                    <div className="col-span-1 sm:col-span-2 text-[11px] text-muted flex items-center gap-1.5">
+                      <Info className="h-3.5 w-3.5 text-muted shrink-0" />
+                      <span>Selecione o mês final para gerar as parcelas numeradas (ex: 1/8 a 8/8).</span>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -377,6 +549,21 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
           </form>
         )}
       </div>
+
+      {/* Modal Rápido para Criar Nova Categoria */}
+      <NewCategoryModal
+        isOpen={isNewCatModalOpen}
+        onClose={() => setIsNewCatModalOpen(false)}
+        defaultType={type}
+        onSuccess={handleCategoryCreated}
+      />
+
+      {/* Modal Rápido para Criar Nova Conta Bancária */}
+      <NewAccountModal
+        isOpen={isNewAccountModalOpen}
+        onClose={() => setIsNewAccountModalOpen(false)}
+        onSuccess={handleAccountCreated}
+      />
     </div>
   );
 };

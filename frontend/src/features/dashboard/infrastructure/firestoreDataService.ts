@@ -10,7 +10,8 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/infrastructure/firebase/firebase';
-import { FamilyMember, BoxGoal, BankAccount, FinancialTransaction } from '@/core/types';
+import { FamilyMember, BoxGoal, BankAccount, FinancialTransaction, FinancialCategory } from '@/core/types';
+import { DEFAULT_CATEGORIES } from '@/core/categories';
 
 export interface FamilyDataState {
   familyName: string;
@@ -19,6 +20,40 @@ export interface FamilyDataState {
   boxes: BoxGoal[];
   accounts: BankAccount[];
   transactions: FinancialTransaction[];
+  categories: FinancialCategory[];
+}
+
+/**
+ * Inicializa as categorias padrão diretamente no Firestore para a família
+ */
+export async function seedDefaultCategoriesIfEmpty(familyId: string) {
+  try {
+    const categoriesRef = collection(db, `families/${familyId}/categories`);
+    const snap = await getDocs(categoriesRef);
+
+    if (snap.empty) {
+      const batch = writeBatch(db);
+      const nowIso = new Date().toISOString();
+
+      DEFAULT_CATEGORIES.forEach((cat) => {
+        const catDocRef = doc(categoriesRef, cat.id);
+        batch.set(catDocRef, {
+          id: cat.id,
+          name: cat.name,
+          type: cat.type,
+          icon: cat.icon,
+          color: cat.color,
+          isCustom: true,
+          createdAt: nowIso,
+        });
+      });
+
+      await batch.commit();
+      console.log(`✅ Categorias padrão salvas no Firestore para [${familyId}]!`);
+    }
+  } catch (err) {
+    console.warn('Aviso ao inicializar categorias no Firestore:', err);
+  }
 }
 
 /**
@@ -26,6 +61,9 @@ export interface FamilyDataState {
  */
 export async function seedInitialFamilyDataIfEmpty(familyId: string, headMemberId: string) {
   try {
+    // 1. Inicializar categorias no Firestore se não existirem
+    await seedDefaultCategoriesIfEmpty(familyId);
+
     const boxesRef = collection(db, `families/${familyId}/boxes`);
     const boxesSnap = await getDocs(boxesRef);
 
@@ -354,6 +392,82 @@ export async function deleteTransactionFromFirestore(familyId: string, transacti
 }
 
 /**
+ * Atualiza uma movimentação individual no Firestore
+ */
+export async function updateTransactionInFirestore(
+  familyId: string,
+  transactionId: string,
+  updates: Partial<FinancialTransaction>
+): Promise<void> {
+  const transDocRef = doc(db, `families/${familyId}/transactions`, transactionId);
+  await updateDoc(transDocRef, {
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+/**
+ * Atualiza múltiplas movimentações em lote no Firestore (ex: todas as parcelas)
+ */
+export async function updateMultipleTransactionsInFirestore(
+  familyId: string,
+  transactionsUpdates: { id: string; updates: Partial<FinancialTransaction> }[]
+): Promise<void> {
+  const batch = writeBatch(db);
+  const nowIso = new Date().toISOString();
+
+  for (const item of transactionsUpdates) {
+    const docRef = doc(db, `families/${familyId}/transactions`, item.id);
+    batch.update(docRef, {
+      ...item.updates,
+      updatedAt: nowIso,
+    });
+  }
+
+  await batch.commit();
+}
+
+/**
+ * Adiciona uma nova categoria ao Firestore
+ */
+export async function addCategoryToFirestore(
+  familyId: string,
+  categoryData: Omit<FinancialCategory, 'id'>
+): Promise<FinancialCategory> {
+  const catRef = collection(db, `families/${familyId}/categories`);
+  const newDocRef = doc(catRef);
+  const category: FinancialCategory = {
+    ...categoryData,
+    id: newDocRef.id,
+    isCustom: true,
+    createdAt: new Date().toISOString(),
+  };
+
+  await setDoc(newDocRef, category);
+  return category;
+}
+
+/**
+ * Atualiza uma categoria no Firestore
+ */
+export async function updateCategoryInFirestore(
+  familyId: string,
+  categoryId: string,
+  updates: Partial<FinancialCategory>
+): Promise<void> {
+  const catDocRef = doc(db, `families/${familyId}/categories`, categoryId);
+  await updateDoc(catDocRef, updates);
+}
+
+/**
+ * Exclui uma categoria personalizada do Firestore
+ */
+export async function deleteCategoryFromFirestore(familyId: string, categoryId: string): Promise<void> {
+  const catDocRef = doc(db, `families/${familyId}/categories`, categoryId);
+  await deleteDoc(catDocRef);
+}
+
+/**
  * Escuta em tempo real todas as subcoleções do Firestore para a família
  */
 export function subscribeFamilyData(
@@ -368,6 +482,7 @@ export function subscribeFamilyData(
     boxes: [],
     accounts: [],
     transactions: [],
+    categories: DEFAULT_CATEGORIES,
   };
 
   const notify = () => {
@@ -418,6 +533,21 @@ export function subscribeFamilyData(
       notify();
     });
     unsubs.push(unsubTrans);
+
+    // 6. Escutar Categorias do Firestore
+    const categoriesRef = collection(db, `families/${familyId}/categories`);
+    const unsubCategories = onSnapshot(categoriesRef, (snap) => {
+      if (snap.empty) {
+        // Se a coleção ainda estiver vazia no Firestore, faz o seed automático
+        seedDefaultCategoriesIfEmpty(familyId);
+        state.categories = DEFAULT_CATEGORIES;
+      } else {
+        // Usa estritamente os documentos da coleção de categorias do Firestore
+        state.categories = snap.docs.map((d) => d.data() as FinancialCategory);
+      }
+      notify();
+    });
+    unsubs.push(unsubCategories);
   } catch (err) {
     console.error('Erro ao subscrever dados do Firestore:', err);
   }
@@ -430,3 +560,4 @@ export function subscribeFamilyData(
     });
   };
 }
+

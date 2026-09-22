@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { BoxGoal, BankAccount, FinancialTransaction } from '@/core/types';
+import { getCategoryColor } from '@/core/categories';
 import {
   filterTransactionsByPeriod,
   getMonthName,
@@ -19,6 +20,7 @@ export const DashboardPage: React.FC = () => {
     boxes,
     accounts,
     transactions,
+    categories,
   } = useAppStore();
 
   const [periodRange, setPeriodRange] = useState<'1m' | '6m' | '1a'>('1a');
@@ -114,28 +116,19 @@ export const DashboardPage: React.FC = () => {
       categoryTotals[cat] = (categoryTotals[cat] || 0) + Math.abs(t.amountCents) / 100;
     });
 
-  const categoryColors: Record<string, string> = {
-    Moradia: '#0A1F44',
-    Alimentação: '#3F6FD8',
-    Transporte: '#8FB2F5',
-    Lazer: '#F5B82E',
-    Saúde: '#FFE27A',
-    Outros: '#B9C2D5',
-  };
-
   const categoriesEntries: [string, number, string][] = Object.keys(categoryTotals).length > 0
     ? Object.entries(categoryTotals).map(([cat, val]) => [
         cat,
         val,
-        categoryColors[cat] || '#8FB2F5',
+        getCategoryColor(cat, categories),
       ])
     : [
-        ['Moradia', 1450, '#0A1F44'],
-        ['Alimentação', 980, '#3F6FD8'],
-        ['Transporte', 620, '#8FB2F5'],
-        ['Lazer', 420, '#F5B82E'],
-        ['Saúde', 310, '#FFE27A'],
-        ['Outros', 572, '#B9C2D5'],
+        ['Moradia', 1450, '#3F6FD8'],
+        ['Alimentação', 980, '#F5B82E'],
+        ['Transporte', 620, '#F97316'],
+        ['Lazer', 420, '#EC4899'],
+        ['Saúde', 310, '#EF4444'],
+        ['Outros', 572, '#64748B'],
       ];
 
   const totalExpensesNumber = categoriesEntries.reduce((acc, curr) => acc + curr[1], 0) || 1;

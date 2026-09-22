@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { OpenFinanceModal } from '@/features/open-finance/presentation/components/OpenFinanceModal';
+// import { OpenFinanceModal } from '@/features/open-finance/presentation/components/OpenFinanceModal';
 import { NewTransactionModal } from './NewTransactionModal';
 import { InitialSetupModal } from '@/features/family/presentation/components/InitialSetupModal';
 import { useAppStore } from '@/features/auth/useAppStore';
@@ -27,6 +27,7 @@ export const AppLayout: React.FC = () => {
 
   const [isOpenFinanceOpen, setIsOpenFinanceOpen] = useState(false);
   const [isNewTransactionOpen, setIsNewTransactionOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Redireciona para o login caso não haja usuário logado
   useEffect(() => {
@@ -79,13 +80,20 @@ export const AppLayout: React.FC = () => {
     <div className="min-h-full p-2.5 pb-28 font-sans text-[15px] leading-[1.45] text-navy antialiased md:p-5 md:pb-5">
       {/* Moldura de Vidro Unificada para toda a Aplicação */}
       <div className="mx-auto grid max-w-[1560px] grid-cols-1 gap-3.5 rounded-[28px] border border-white/80 bg-white/65 p-2 shadow-[0_40px_80px_-40px_rgba(10,31,68,.3),inset_0_1px_0_rgba(255,255,255,.95)] backdrop-blur-[30px] backdrop-saturate-150 md:grid-cols-[78px_minmax(0,1fr)] md:rounded-[38px] md:p-3.5 xl:grid-cols-[252px_minmax(0,1fr)]">
-        {/* Menu Lateral Padronizado */}
-        <Sidebar onOpenOpenFinance={() => setIsOpenFinanceOpen(true)} />
+        {/* Menu Lateral Padronizado com Suporte a Mobile Drawer */}
+        <Sidebar
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          onOpenOpenFinance={() => setIsOpenFinanceOpen(true)}
+        />
 
         {/* Área de Conteúdo */}
         <main className="flex min-w-0 flex-col gap-4 p-1 md:px-1.5">
-          {/* Topbar Padronizada */}
-          <Header onOpenNewTransaction={() => setIsNewTransactionOpen(true)} />
+          {/* Topbar Padronizada com Botão Hambúrguer Mobile */}
+          <Header
+            onOpenNewTransaction={() => setIsNewTransactionOpen(true)}
+            onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
+          />
 
           {/* Renderização do Módulo Ativo */}
           <Outlet />
@@ -98,10 +106,12 @@ export const AppLayout: React.FC = () => {
         onClose={() => setIsInitialSetupOpen(false)}
       />
 
+      {/* Open Finance desativado temporariamente
       <OpenFinanceModal
         isOpen={isOpenFinanceOpen}
         onClose={() => setIsOpenFinanceOpen(false)}
       />
+      */}
 
       <NewTransactionModal
         isOpen={isNewTransactionOpen}

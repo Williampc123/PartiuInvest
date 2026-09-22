@@ -132,4 +132,82 @@
            aria-selected:bg-navy aria-selected:text-white aria-selected:shadow-[0_6px_14px_-8px_rgba(10,31,68,.8)]
            focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-gold;
   }
+
+  /* Transformação de Tabelas em Cards no Mobile (<= 768px) */
+  .table-cards-mobile table,
+  table.mobile-cards,
+  table.table-responsive {
+    @apply w-full;
+  }
+
+  @media (max-width: 768px) {
+    .table-cards-mobile table,
+    table.mobile-cards,
+    table.table-responsive {
+      display: block;
+      width: 100%;
+    }
+
+    .table-cards-mobile thead,
+    table.mobile-cards thead,
+    table.table-responsive thead {
+      display: none;
+    }
+
+    .table-cards-mobile tbody,
+    table.mobile-cards tbody,
+    table.table-responsive tbody {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .table-cards-mobile tr,
+    table.mobile-cards tr,
+    table.table-responsive tr {
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(10, 31, 68, 0.1);
+      border-radius: 1.25rem;
+      padding: 1rem;
+      box-shadow: 0 8px 20px -8px rgba(10, 31, 68, 0.1);
+      backdrop-filter: blur(16px);
+      margin-bottom: 0.5rem;
+    }
+
+    .table-cards-mobile td,
+    table.mobile-cards td,
+    table.table-responsive td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.45rem 0;
+      border-bottom: 1px dashed rgba(10, 31, 68, 0.08);
+      font-size: 0.875rem;
+      text-align: right;
+    }
+
+    .table-cards-mobile td:last-child,
+    table.mobile-cards td:last-child,
+    table.table-responsive td:last-child {
+      border-bottom: none;
+      padding-top: 0.65rem;
+    }
+
+    .table-cards-mobile td[data-label]::before,
+    table.mobile-cards td[data-label]::before,
+    table.table-responsive td[data-label]::before {
+      content: attr(data-label);
+      font-weight: 700;
+      color: #5B6885;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      text-align: left;
+      margin-right: 0.75rem;
+    }
+  }
 }
+

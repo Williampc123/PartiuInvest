@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { UserProfile, FamilyMember, BankAccount, BoxGoal, FinancialTransaction } from '../../core/types';
+import { UserProfile, FamilyMember, BankAccount, BoxGoal, FinancialTransaction, FinancialCategory } from '../../core/types';
+import { DEFAULT_CATEGORIES } from '../../core/categories';
 
 interface AppState {
   user: UserProfile | null;
@@ -9,6 +10,7 @@ interface AppState {
   accounts: BankAccount[];
   boxes: BoxGoal[];
   transactions: FinancialTransaction[];
+  categories: FinancialCategory[];
   selectedYearMonth: string; // formato YYYY-MM (ex: '2026-09')
   periodFilter: {
     type: 'month' | 'custom' | 'all';
@@ -39,8 +41,14 @@ interface AppState {
   goToPreviousMonth: () => void;
   goToNextMonth: () => void;
   setAccounts: (accounts: BankAccount[]) => void;
+  addAccount: (account: BankAccount) => void;
   setBoxes: (boxes: BoxGoal[]) => void;
   setTransactions: (transactions: FinancialTransaction[]) => void;
+  updateTransaction: (transaction: FinancialTransaction) => void;
+  updateMultipleTransactions: (updatedList: FinancialTransaction[]) => void;
+  setCategories: (categories: FinancialCategory[]) => void;
+  addCategory: (category: FinancialCategory) => void;
+  removeCategory: (id: string) => void;
   setIsDataLoaded: (loaded: boolean) => void;
   setIsOffline: (offline: boolean) => void;
   setAllFamilyData: (data: {
@@ -49,6 +57,7 @@ interface AppState {
     boxes?: BoxGoal[];
     accounts?: BankAccount[];
     transactions?: FinancialTransaction[];
+    categories?: FinancialCategory[];
   }) => void;
 }
 
@@ -88,6 +97,7 @@ export const useAppStore = create<AppState>((set) => {
     accounts: [],
     boxes: [],
     transactions: [],
+    categories: DEFAULT_CATEGORIES,
     initialSetupDone: false,
     isInitialSetupOpen: false,
     isDataLoaded: false,
@@ -155,8 +165,32 @@ export const useAppStore = create<AppState>((set) => {
       }),
 
     setAccounts: (accounts) => set({ accounts }),
+    addAccount: (account) =>
+      set((state) => ({
+        accounts: [...state.accounts.filter((a) => a.id !== account.id), account],
+      })),
     setBoxes: (boxes) => set({ boxes }),
     setTransactions: (transactions) => set({ transactions }),
+    updateTransaction: (transaction) =>
+      set((state) => ({
+        transactions: state.transactions.map((t) => (t.id === transaction.id ? transaction : t)),
+      })),
+    updateMultipleTransactions: (updatedList) =>
+      set((state) => {
+        const updatedMap = new Map(updatedList.map((t) => [t.id, t]));
+        return {
+          transactions: state.transactions.map((t) => updatedMap.get(t.id) || t),
+        };
+      }),
+    setCategories: (categories) => set({ categories }),
+    addCategory: (category) =>
+      set((state) => ({
+        categories: [...state.categories.filter((c) => c.id !== category.id), category],
+      })),
+    removeCategory: (id) =>
+      set((state) => ({
+        categories: state.categories.filter((c) => c.id !== id),
+      })),
     setIsDataLoaded: (isDataLoaded) => set({ isDataLoaded }),
     setIsOffline: (isOffline) => set({ isOffline }),
 
@@ -167,6 +201,7 @@ export const useAppStore = create<AppState>((set) => {
         boxes: data.boxes !== undefined ? data.boxes : state.boxes,
         accounts: data.accounts !== undefined ? data.accounts : state.accounts,
         transactions: data.transactions !== undefined ? data.transactions : state.transactions,
+        categories: data.categories !== undefined ? data.categories : state.categories,
         initialSetupDone: (data as any).initialSetupDone !== undefined ? (data as any).initialSetupDone : state.initialSetupDone,
         isDataLoaded: true,
       })),
