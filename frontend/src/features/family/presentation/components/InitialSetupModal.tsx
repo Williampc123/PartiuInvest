@@ -16,7 +16,7 @@ import { db } from '@/infrastructure/firebase/firebase';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { FamilyMember, FamilyRole, PaydayType } from '@/core/types';
 import { calculateMemberPayday, formatDateBr } from '@/core/dateUtils';
-import { checkAndGenerateMonthlySalaries } from '@/features/family/infrastructure/salaryService';
+import { generateProvisionedSalaries } from '@/features/family/infrastructure/salaryService';
 
 interface InitialSetupModalProps {
   isOpen: boolean;
@@ -40,6 +40,33 @@ export const InitialSetupModal: React.FC<InitialSetupModalProps> = ({ isOpen, on
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Estados para provisionamento de salários ao longo de um período
+  const [provisionSalaries, setProvisionSalaries] = useState(true);
+  const [provisionPeriod, setProvisionPeriod] = useState<'3m' | '6m' | '1y' | '2y' | '3y' | 'custom'>('1y');
+  const [customMonths, setCustomMonths] = useState(12);
+
+  const getMonthsCount = (): number => {
+    if (!provisionSalaries) return 1;
+    switch (provisionPeriod) {
+      case '3m': return 3;
+      case '6m': return 6;
+      case '1y': return 12;
+      case '2y': return 24;
+      case '3y': return 36;
+      case 'custom': return Math.max(1, Math.min(60, customMonths || 1));
+      default: return 12;
+    }
+  };
+
+  const getPeriodRangeLabel = (months: number): string => {
+    const start = new Date();
+    const end = new Date(start.getFullYear(), start.getMonth() + months - 1, 1);
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const startStr = `${monthNames[start.getMonth()]}/${start.getFullYear()}`;
+    const endStr = `${monthNames[end.getMonth()]}/${end.getFullYear()}`;
+    return `${startStr} até ${endStr}`;
+  };
 
   const roleColors: Record<FamilyRole, string> = {
     'chefe-familia': '#F5B82E',
@@ -166,8 +193,9 @@ export const InitialSetupModal: React.FC<InitialSetupModalProps> = ({ isOpen, on
       // Atualizar estado global
       setFamilyMembers(updatedFamilyMembers);
 
-      // Gerar automaticamente as receitas salariais previstas no Firestore para o mês vigente
-      await checkAndGenerateMonthlySalaries(user.familyId, updatedFamilyMembers, transactions);
+      // Gerar automaticamente as receitas salariais previstas no Firestore para o período configurado
+      const monthsToGenerate = getMonthsCount();
+      await generateProvisionedSalaries(user.familyId, updatedFamilyMembers, transactions, monthsToGenerate);
 
       setSuccess(true);
       setTimeout(() => {
@@ -407,6 +435,100 @@ export const InitialSetupModal: React.FC<InitialSetupModalProps> = ({ isOpen, on
                   <UserPlus className="h-3.5 w-3.5" />
                   <span>+ Adicionar Filho / Dependente</span>
                 </button>
+              </div>
+
+              {/* Bloco de Provisionamento de Salários por Período */}
+              <div className={`p-4 rounded-2xl border transition-all space-y-3 mt-3 ${
+                provisionSalaries
+                  ? 'bg-gold/10 border-gold/40 shadow-sm'
+                  : 'bg-navy/[0.02] border-navy/10'
+              }`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
+                      provisionSalaries ? 'bg-gold/30 text-gold-deep' : 'bg-navy/10 text-muted'
+                    }`}>
+                      <Calendar className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <label htmlFor="provision-checkbox" className="block text-xs sm:text-sm font-extrabold text-navy cursor-pointer">
+                        Provisionar salários futuros por um período
+                      </label>
+                      <p className="text-[11px] text-muted">
+                        Gera automaticamente os lançamentos previstos de receitas salariais ao longo dos meses.
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    id="provision-checkbox"
+                    type="checkbox"
+                    checked={provisionSalaries}
+                    onChange={(e) => setProvisionSalaries(e.target.checked)}
+                    className="h-5 w-5 rounded-lg accent-gold cursor-pointer shrink-0"
+                  />
+                </div>
+
+                {provisionSalaries && (
+                  <div className="pt-3 border-t border-gold/25 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block text-xs font-bold text-navy">
+                      Escolha o período de provisionamento:
+                    </label>
+
+                    {/* Opções de período: 3 meses, 6 meses, 1 ano, 2 anos, 3 anos, personalizado */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                      {[
+                        { key: '3m', label: '3 meses', count: 3 },
+                        { key: '6m', label: '6 meses', count: 6 },
+                        { key: '1y', label: '1 ano', count: 12 },
+                        { key: '2y', label: '2 anos', count: 24 },
+                        { key: '3y', label: '3 anos', count: 36 },
+                        { key: 'custom', label: 'Personalizado', count: customMonths },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setProvisionPeriod(item.key as any)}
+                          className={`py-2 px-2 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center text-center ${
+                            provisionPeriod === item.key
+                              ? 'bg-gold text-navy-deep border-gold-deep ring-2 ring-gold/40 shadow-sm'
+                              : 'bg-white border-navy/15 text-navy hover:border-gold/50'
+                          }`}
+                        >
+                          <span>{item.label}</span>
+                          {item.key !== 'custom' && (
+                            <span className="text-[10px] opacity-75">{item.count} parcelas</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Input de período personalizado */}
+                    {provisionPeriod === 'custom' && (
+                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-gold/30">
+                        <label className="text-xs font-bold text-navy whitespace-nowrap">
+                          Quantidade de meses:
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="60"
+                          value={customMonths}
+                          onChange={(e) => setCustomMonths(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))}
+                          className="w-24 h-9 px-3 rounded-lg border border-navy/20 text-xs font-extrabold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
+                        />
+                        <span className="text-xs text-muted">meses (1 a 60 parcelas)</span>
+                      </div>
+                    )}
+
+                    {/* Badge informativo com preview do período e parcelas */}
+                    <div className="p-2.5 rounded-xl bg-white/90 border border-gold/30 flex items-center gap-2 text-[11px] text-navy font-semibold">
+                      <Sparkles className="h-4 w-4 text-gold-deep shrink-0" />
+                      <span>
+                        Serão criadas <b>{getMonthsCount()} parcelas mensais</b> de previsão de salário para cada membro ({getPeriodRangeLabel(getMonthsCount())}).
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

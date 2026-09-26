@@ -12,10 +12,12 @@ import {
 import { db } from '@/infrastructure/firebase/firebase';
 import { FamilyMember, BoxGoal, BankAccount, FinancialTransaction, FinancialCategory } from '@/core/types';
 import { DEFAULT_CATEGORIES } from '@/core/categories';
+import { FamilyBudgetConfig } from '@/features/budget/infrastructure/budgetService';
 
 export interface FamilyDataState {
   familyName: string;
   initialSetupDone?: boolean;
+  budgetConfig?: FamilyBudgetConfig | null;
   members: FamilyMember[];
   boxes: BoxGoal[];
   accounts: BankAccount[];
@@ -392,6 +394,23 @@ export async function deleteTransactionFromFirestore(familyId: string, transacti
 }
 
 /**
+ * Exclui múltiplas movimentações em lote no Firestore
+ */
+export async function deleteMultipleTransactionsFromFirestore(
+  familyId: string,
+  transactionIds: string[]
+): Promise<void> {
+  if (!familyId || !transactionIds || transactionIds.length === 0) return;
+
+  const batch = writeBatch(db);
+  for (const id of transactionIds) {
+    const docRef = doc(db, `families/${familyId}/transactions`, id);
+    batch.delete(docRef);
+  }
+  await batch.commit();
+}
+
+/**
  * Atualiza uma movimentação individual no Firestore
  */
 export async function updateTransactionInFirestore(
@@ -497,6 +516,7 @@ export function subscribeFamilyData(
         const data = docSnap.data();
         state.familyName = data.name || 'Minha Família';
         state.initialSetupDone = data.initialSetupDone === true;
+        state.budgetConfig = data.budgetConfig || null;
         notify();
       }
     });

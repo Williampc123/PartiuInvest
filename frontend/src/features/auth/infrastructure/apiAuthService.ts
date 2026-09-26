@@ -205,51 +205,10 @@ export async function loginWithApi(email: string, pass: string): Promise<AuthApi
     saveLocalSession(result);
     return result;
   } catch (error: any) {
-    // Se for erro de validação/credencial da API, lançar para exibir no formulário
-    if (error?.message && !error?.name?.includes('Abort') && !error?.message?.includes('Failed to fetch')) {
-      throw error;
+    if (error?.name?.includes('Abort') || error?.message?.includes('Failed to fetch')) {
+      throw new Error('Servidor de autenticação offline ou inacessível. Tente novamente mais tarde.');
     }
-
-    // Se a API estiver offline, checar cache local
-    console.warn('API Node offline. Verificando dados no armazenamento local...');
-
-    const cached = localStorage.getItem('partiu_last_user');
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        return {
-          user: parsed.user,
-          familyMembers: parsed.members || [],
-          boxes: parsed.boxes || [],
-          accounts: parsed.accounts || [],
-          isOfflineMode: true,
-        };
-      } catch {
-        // Fallback
-      }
-    }
-
-    // Sessão fallback padrão para não bloquear o usuário
-    const fallbackUser: UserProfile = {
-      uid: 'demo_user_offline',
-      familyId: 'fam_demo_01',
-      memberId: 'mem_chefe_01',
-      role: 'chefe-familia',
-      displayName: 'Lucas Martins',
-      email: email || 'lucas@partiuinvest.com.br',
-      color: '#F5B82E',
-    };
-
-    const defaultResult: AuthApiResponse = {
-      user: fallbackUser,
-      familyMembers: [],
-      boxes: [],
-      accounts: [],
-      isOfflineMode: true,
-    };
-
-    saveLocalSession(defaultResult);
-    return defaultResult;
+    throw error;
   }
 }
 
@@ -257,24 +216,5 @@ export async function loginWithApi(email: string, pass: string): Promise<AuthApi
  * Login com Google simplificado
  */
 export async function loginGoogleApi(): Promise<AuthApiResponse> {
-  const fallbackUser: UserProfile = {
-    uid: 'usr_google_01',
-    familyId: 'fam_google_01',
-    memberId: 'mem_chefe_google',
-    role: 'chefe-familia',
-    displayName: 'Lucas Martins (Google)',
-    email: 'lucas.martins@gmail.com',
-    color: '#F5B82E',
-  };
-
-  const res: AuthApiResponse = {
-    user: fallbackUser,
-    familyMembers: [],
-    boxes: [],
-    accounts: [],
-    isOfflineMode: false,
-  };
-
-  saveLocalSession(res);
-  return res;
+  throw new Error('Utilize o Firebase Authentication para login com Google.');
 }

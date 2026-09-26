@@ -5,6 +5,7 @@ import { Header } from './Header';
 // import { OpenFinanceModal } from '@/features/open-finance/presentation/components/OpenFinanceModal';
 import { NewTransactionModal } from './NewTransactionModal';
 import { InitialSetupModal } from '@/features/family/presentation/components/InitialSetupModal';
+import { BudgetSetupModal } from '@/features/budget/presentation/components/BudgetSetupModal';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { checkAndGenerateMonthlySalaries } from '@/features/family/infrastructure/salaryService';
 import {
@@ -22,6 +23,8 @@ export const AppLayout: React.FC = () => {
     initialSetupDone,
     isInitialSetupOpen,
     setIsInitialSetupOpen,
+    isBudgetSetupOpen,
+    setIsBudgetSetupOpen,
     setAllFamilyData,
   } = useAppStore();
 
@@ -104,6 +107,11 @@ export const AppLayout: React.FC = () => {
       <InitialSetupModal
         isOpen={isInitialSetupOpen}
         onClose={() => setIsInitialSetupOpen(false)}
+      />
+
+      <BudgetSetupModal
+        isOpen={isBudgetSetupOpen}
+        onClose={() => setIsBudgetSetupOpen(false)}
       />
 
       {/* Open Finance desativado temporariamente

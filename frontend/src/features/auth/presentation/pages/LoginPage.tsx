@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../useAppStore';
 import {
-  registerWithApi,
-  loginWithApi,
-  loginGoogleApi,
-} from '@/features/auth/infrastructure/apiAuthService';
+  registerFamilyAndHead,
+  loginUser,
+  loginWithGoogle,
+  getFirebaseErrorMessage,
+} from '@/features/auth/infrastructure/firebaseAuthService';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export const LoginPage: React.FC = () => {
 
   const validateSenha = (v: string) => {
     if (!v) return 'Digite sua senha.';
-    if (v.length < 6) return 'A senha tem pelo menos 6 caracteres.';
+    if (v.length < 6) return 'A senha deve ter pelo menos 6 caracteres.';
     return '';
   };
 
@@ -63,50 +64,38 @@ export const LoginPage: React.FC = () => {
 
     try {
       if (mode === 'register') {
-        setStatusMsg('Criando família e configurando caixinhas...');
-        const result = await registerWithApi({
+        setStatusMsg('Criando conta e configurando família no Firebase...');
+        const result = await registerFamilyAndHead({
           name,
-          email,
+          email: email.trim(),
           password: senha,
-          familyName: familyName || `Família ${name.split(' ')[name.split(' ').length - 1] || 'Silva'}`,
+          familyName: familyName.trim() || `Família ${name.trim().split(' ').slice(-1)[0] || 'Silva'}`,
         });
 
         setUser(result.user);
         setFamilyMembers(result.familyMembers);
         setBoxes(result.boxes);
         setAccounts(result.accounts);
+        setIsOffline(false);
 
-        if (result.isOfflineMode) {
-          setIsOffline(true);
-          setStatusMsg('Família criada e salva com sucesso! Entrando no painel...');
-        } else {
-          setIsOffline(false);
-          setStatusMsg('Família cadastrada com sucesso na API! Entrando no painel...');
-        }
-
-        setTimeout(() => navigate('/dashboard'), 600);
+        setStatusMsg('Conta criada com sucesso! Acessando painel...');
+        setTimeout(() => navigate('/dashboard'), 500);
       } else {
-        setStatusMsg('Autenticando...');
-        const result = await loginWithApi(email, senha);
+        setStatusMsg('Validando credenciais com o Firebase...');
+        const result = await loginUser(email.trim(), senha);
 
         setUser(result.user);
         if (result.familyMembers.length > 0) setFamilyMembers(result.familyMembers);
         if (result.boxes.length > 0) setBoxes(result.boxes);
         if (result.accounts.length > 0) setAccounts(result.accounts);
+        setIsOffline(false);
 
-        if (result.isOfflineMode) {
-          setIsOffline(true);
-          setStatusMsg('Acesso realizado com sucesso!');
-        } else {
-          setIsOffline(false);
-          setStatusMsg('Tudo certo. Levando você ao seu painel.');
-        }
-
-        setTimeout(() => navigate('/dashboard'), 500);
+        setStatusMsg('Login efetuado com sucesso! Redirecionando...');
+        setTimeout(() => navigate('/dashboard'), 400);
       }
     } catch (err: any) {
-      console.error('Erro de autenticação:', err);
-      setErrorMsg(err?.message || 'Erro ao conectar. Verifique seus dados.');
+      console.error('Erro de autenticação Firebase:', err);
+      setErrorMsg(getFirebaseErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -114,25 +103,22 @@ export const LoginPage: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     setErrorMsg('');
-    setStatusMsg('Conectando...');
+    setStatusMsg('Conectando ao Google...');
     setLoading(true);
 
     try {
-      const result = await loginGoogleApi();
+      const result = await loginWithGoogle();
       setUser(result.user);
       if (result.familyMembers.length > 0) setFamilyMembers(result.familyMembers);
       if (result.boxes.length > 0) setBoxes(result.boxes);
       if (result.accounts.length > 0) setAccounts(result.accounts);
+      setIsOffline(false);
 
-      if (result.isOfflineMode) {
-        setIsOffline(true);
-      }
-
-      setStatusMsg('Login concluído! Abrindo painel...');
-      setTimeout(() => navigate('/dashboard'), 500);
+      setStatusMsg('Login com Google concluído! Abrindo painel...');
+      setTimeout(() => navigate('/dashboard'), 400);
     } catch (err: any) {
-      console.error('Erro Auth:', err);
-      setErrorMsg(err?.message || 'Erro ao entrar.');
+      console.error('Erro Auth Google:', err);
+      setErrorMsg(getFirebaseErrorMessage(err));
     } finally {
       setLoading(false);
     }

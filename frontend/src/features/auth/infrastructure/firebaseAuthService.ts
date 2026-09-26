@@ -1,20 +1,14 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  updateProfile,
-} from 'firebase/auth';
+import bcrypt from 'bcryptjs';
 import {
   doc,
   collection,
   writeBatch,
   getDocs,
   query,
-  collectionGroup,
   where,
+  updateDoc,
 } from 'firebase/firestore';
-import { auth, db } from '@/infrastructure/firebase/firebase';
+import { db } from '@/infrastructure/firebase/firebase';
 import { UserProfile, FamilyMember, BoxGoal, BankAccount } from '@/core/types';
 import { DEFAULT_CATEGORIES } from '@/core/categories';
 
@@ -34,28 +28,57 @@ export interface AuthSuccessResult {
 }
 
 /**
- * Função utilitária para timeout em requisições de rede
+ * Gera hash criptográfico seguro (Bcrypt com fallback para SHA-256)
  */
-function withTimeout<T>(promise: Promise<T>, timeoutMs = 4500): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      const err = new Error('Tempo limite de rede excedido.');
-      (err as any).code = 'auth/network-request-failed';
-      reject(err);
-    }, timeoutMs);
-
-    promise
-      .then((res) => {
-        clearTimeout(timer);
-        resolve(res);
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-  });
+export async function hashPassword(password: string): Promise<string> {
+  try {
+    return await bcrypt.hash(password, 10);
+  } catch {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
 }
 
+/**
+ * Valida a senha comparando com o hash salvo no Firestore (suporta Bcrypt, SHA-256 e texto direto)
+ */
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  if (!storedHash) return false;
+
+  // 1. Se for hash Bcrypt ($2a$, $2b$, $2y$)
+  if (storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$') || storedHash.startsWith('$2y$')) {
+    try {
+      const match = await bcrypt.compare(password, storedHash);
+      if (match) return true;
+    } catch {}
+  }
+
+  // 2. Se for hash SHA-256 (64 hexadecimais)
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const sha256Hex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (sha256Hex.toLowerCase() === storedHash.toLowerCase()) {
+      return true;
+    }
+  } catch {}
+
+  // 3. Fallback para comparação direta (caso tenha sido gravado em texto simples)
+  if (password === storedHash) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Mapeamento de mensagens amigáveis de erro
+ */
 export function getFirebaseErrorMessage(error: any): string {
   const code = error?.code || '';
   switch (code) {
@@ -72,17 +95,14 @@ export function getFirebaseErrorMessage(error: any): string {
     case 'auth/popup-closed-by-user':
       return 'A janela de autenticação foi fechada antes de concluir.';
     case 'auth/network-request-failed':
-      return 'Modo Offline: Não foi possível conectar ao servidor do Firebase no momento. Seus dados foram salvos localmente.';
-    case 'auth/configuration-not-found':
-    case 'auth/operation-not-allowed':
-      return 'Autenticação por E-mail/Senha não ativada no Firebase Console. Operando em modo local persistente.';
+      return 'Não foi possível conectar ao Firestore no momento. Verifique sua conexão.';
     default:
       return error?.message || 'Ocorreu um erro ao processar. Tente novamente.';
   }
 }
 
 /**
- * Helper para salvar e recuperar usuários em cache local offline (localStorage)
+ * Helper para salvar sessão localmente
  */
 function saveLocalUser(user: UserProfile, members: FamilyMember[], boxes: BoxGoal[]) {
   try {
@@ -95,392 +115,278 @@ function saveLocalUser(user: UserProfile, members: FamilyMember[], boxes: BoxGoa
 }
 
 /**
- * Registra o Chefe de Família, cria o documento da Família e as Caixinhas iniciais.
- * Se a conexão com o Firebase falhar/timeout (offline), cria no armazenamento persistente local.
+ * Registra novo usuário e estrutura familiar diretamente na collection `users` e `families` do Firestore
  */
 export async function registerFamilyAndHead(
   params: RegisterFamilyParams
 ): Promise<AuthSuccessResult> {
-  const { name, email, password, familyName } = params;
+  const { name, email: rawEmail, password, familyName } = params;
+  const email = rawEmail.toLowerCase().trim();
 
+  // 1. Verificar se o e-mail já existe na collection `users` do Firestore
+  const usersRef = collection(db, 'users');
+  const userQuery = query(usersRef, where('email', '==', email));
+  const userSnap = await getDocs(userQuery);
+
+  if (!userSnap.empty) {
+    const err: any = new Error('Este e-mail já está cadastrado. Tente entrar.');
+    err.code = 'auth/email-already-in-use';
+    throw err;
+  }
+
+  // 2. Gerar hashes e IDs
+  const passwordHash = await hashPassword(password);
+  const nowIso = new Date().toISOString();
+
+  const userDocRef = doc(collection(db, 'users'));
+  const userId = userDocRef.id;
+
+  const familyDocRef = doc(collection(db, 'families'));
+  const familyId = familyDocRef.id;
+
+  const memberDocRef = doc(collection(db, `families/${familyId}/members`));
+  const memberId = memberDocRef.id;
+
+  // 3. Documento da Família
+  const familyData = {
+    id: familyId,
+    name: familyName || `Família de ${name.trim().split(' ')[0]}`,
+    headMemberId: memberId,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    plan: 'free',
+    currency: 'BRL',
+    settings: {
+      defaultView: 'consolidated',
+      allowKidsViewFamilyTotals: true,
+    },
+  };
+
+  // 4. Documento do Membro Chefe
+  const headMember: FamilyMember = {
+    id: memberId,
+    authUid: userId,
+    role: 'chefe-familia',
+    name: name.trim(),
+    displayName: name.trim().split(' ')[0],
+    email,
+    color: '#F5B82E',
+    isMinor: false,
+    status: 'active',
+  };
+
+  // 5. Caixinhas Iniciais
+  const box1DocRef = doc(collection(db, `families/${familyId}/boxes`));
+  const box1: BoxGoal = {
+    id: box1DocRef.id,
+    ownerMemberId: memberId,
+    visibility: 'family',
+    name: 'Reserva de Emergência',
+    category: 'emergency',
+    targetAmountCents: 1800000,
+    currentBalanceCents: 0,
+    targetDate: '2027-12-31',
+    color: '#F5B82E',
+    icon: 'shield',
+  };
+
+  const box2DocRef = doc(collection(db, `families/${familyId}/boxes`));
+  const box2: BoxGoal = {
+    id: box2DocRef.id,
+    ownerMemberId: memberId,
+    visibility: 'family',
+    name: 'Investimentos',
+    category: 'investment',
+    targetAmountCents: 5000000,
+    currentBalanceCents: 0,
+    color: '#0A1F44',
+    icon: 'chart',
+  };
+
+  const box3DocRef = doc(collection(db, `families/${familyId}/boxes`));
+  const box3: BoxGoal = {
+    id: box3DocRef.id,
+    ownerMemberId: memberId,
+    visibility: 'family',
+    name: 'Viagem dos Sonhos',
+    category: 'dream',
+    targetAmountCents: 800000,
+    currentBalanceCents: 0,
+    targetDate: '2027-07-31',
+    color: '#3F6FD8',
+    icon: 'plane',
+  };
+
+  const defaultBoxes = [box1, box2, box3];
+
+  // 6. Documento do Usuário
+  const userData = {
+    id: userId,
+    name: name.trim(),
+    displayName: name.trim().split(' ')[0],
+    email,
+    passwordHash,
+    familyId,
+    memberId,
+    role: 'chefe-familia',
+    color: '#F5B82E',
+    status: 'active',
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  // 7. Gravação atômica via Batch no Firestore
+  const batch = writeBatch(db);
+  batch.set(userDocRef, userData);
+  batch.set(familyDocRef, familyData);
+  batch.set(memberDocRef, { ...headMember, createdAt: nowIso, updatedAt: nowIso });
+  batch.set(box1DocRef, { ...box1, createdAt: nowIso });
+  batch.set(box2DocRef, { ...box2, createdAt: nowIso });
+  batch.set(box3DocRef, { ...box3, createdAt: nowIso });
+
+  // Categorias padrão
+  DEFAULT_CATEGORIES.forEach((cat) => {
+    const catRef = doc(collection(db, `families/${familyId}/categories`), cat.id);
+    batch.set(catRef, {
+      id: cat.id,
+      name: cat.name,
+      type: cat.type,
+      icon: cat.icon,
+      color: cat.color,
+      isCustom: true,
+      createdAt: nowIso,
+    });
+  });
+
+  await batch.commit();
+
+  const userProfile: UserProfile = {
+    uid: userId,
+    familyId,
+    memberId,
+    role: 'chefe-familia',
+    displayName: name.trim(),
+    email,
+    color: '#F5B82E',
+    isMinor: false,
+  };
+
+  saveLocalUser(userProfile, [headMember], defaultBoxes);
+
+  return {
+    user: userProfile,
+    familyMembers: [headMember],
+    boxes: defaultBoxes,
+    accounts: [],
+    isOfflineMode: false,
+  };
+}
+
+/**
+ * Autentica o usuário diretamente na collection `users` do Firestore
+ */
+export async function loginUser(rawEmail: string, pass: string): Promise<AuthSuccessResult> {
+  const emailLower = rawEmail.toLowerCase().trim();
+  const emailOriginal = rawEmail.trim();
+
+  // 1. Buscar usuário na collection `users` do Firestore (tentando lowercase e original)
+  const usersRef = collection(db, 'users');
+  let userSnap = await getDocs(query(usersRef, where('email', '==', emailLower)));
+  if (userSnap.empty && emailLower !== emailOriginal) {
+    userSnap = await getDocs(query(usersRef, where('email', '==', emailOriginal)));
+  }
+
+  if (userSnap.empty) {
+    const err: any = new Error('E-mail ou senha incorretos.');
+    err.code = 'auth/invalid-credential';
+    throw err;
+  }
+
+  const userDoc = userSnap.docs[0];
+  const userData = userDoc.data() as any;
+
+  // 2. Validar senha com o hash salvo (Bcrypt, SHA-256 ou texto direto)
+  const isMatch = await verifyPassword(pass, userData.passwordHash);
+  if (!isMatch) {
+    const err: any = new Error('E-mail ou senha incorretos.');
+    err.code = 'auth/invalid-credential';
+    throw err;
+  }
+
+  // Atualiza hash antigo para bcrypt caso não seja
+  if (userData.passwordHash && !userData.passwordHash.startsWith('$2b$') && !userData.passwordHash.startsWith('$2a$')) {
+    hashPassword(pass).then((newHash) => {
+      updateDoc(userDoc.ref, { passwordHash: newHash, updatedAt: new Date().toISOString() }).catch(() => {});
+    });
+  }
+
+  const familyId = userData.familyId || `fam_${userDoc.id}`;
+  const memberId = userData.memberId || `mem_${userDoc.id}`;
+
+  // 3. Carregar membros da família
+  let familyMembers: FamilyMember[] = [];
   try {
-    // Tenta criar no Firebase Authentication com timeout de 4.5s
-    const userCredential = await withTimeout(
-      createUserWithEmailAndPassword(auth, email, password)
-    );
-    const authUser = userCredential.user;
+    const membersSnap = await getDocs(collection(db, `families/${familyId}/members`));
+    familyMembers = membersSnap.docs.map((d) => d.data() as FamilyMember);
+  } catch {}
 
-    try {
-      await updateProfile(authUser, { displayName: name });
-    } catch {
-      // Non-blocking
-    }
+  // 4. Carregar caixinhas
+  let boxes: BoxGoal[] = [];
+  try {
+    const boxesSnap = await getDocs(collection(db, `families/${familyId}/boxes`));
+    boxes = boxesSnap.docs.map((d) => d.data() as BoxGoal);
+  } catch {}
 
-    // Gerar IDs locais compatíveis com offline-first
-    const familyRef = doc(collection(db, 'families'));
-    const familyId = familyRef.id;
+  // 5. Carregar contas
+  let accounts: BankAccount[] = [];
+  try {
+    const accountsSnap = await getDocs(collection(db, `families/${familyId}/accounts`));
+    accounts = accountsSnap.docs.map((d) => d.data() as BankAccount);
+  } catch {}
 
-    const memberRef = doc(collection(db, `families/${familyId}/members`));
-    const memberId = memberRef.id;
-
-    const nowIso = new Date().toISOString();
-
-    const batch = writeBatch(db);
-
-    batch.set(familyRef, {
-      id: familyId,
-      name: familyName || `Família de ${name.split(' ')[0]}`,
-      headMemberId: memberId,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-      plan: 'free',
-      currency: 'BRL',
-      settings: {
-        defaultView: 'consolidated',
-        allowKidsViewFamilyTotals: true,
-      },
-    });
-
-    const headMember: FamilyMember = {
-      id: memberId,
-      authUid: authUser.uid,
-      role: 'chefe-familia',
-      name,
-      displayName: name.split(' ')[0],
-      email,
-      color: '#F5B82E',
-      isMinor: false,
-      status: 'active',
-    };
-
-    batch.set(memberRef, {
-      ...headMember,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    });
-
-    const box1Ref = doc(collection(db, `families/${familyId}/boxes`));
-    const box1: BoxGoal = {
-      id: box1Ref.id,
-      ownerMemberId: memberId,
-      visibility: 'family',
-      name: 'Reserva de Emergência',
-      category: 'emergency',
-      targetAmountCents: 1800000,
-      currentBalanceCents: 0,
-      targetDate: '2027-12-31',
-      color: '#F5B82E',
-      icon: 'shield',
-    };
-    batch.set(box1Ref, { ...box1, createdAt: nowIso });
-
-    const box2Ref = doc(collection(db, `families/${familyId}/boxes`));
-    const box2: BoxGoal = {
-      id: box2Ref.id,
-      ownerMemberId: memberId,
-      visibility: 'family',
-      name: 'Investimentos',
-      category: 'investment',
-      targetAmountCents: 5000000,
-      currentBalanceCents: 0,
-      color: '#0A1F44',
-      icon: 'chart',
-    };
-    batch.set(box2Ref, { ...box2, createdAt: nowIso });
-
-    const box3Ref = doc(collection(db, `families/${familyId}/boxes`));
-    const box3: BoxGoal = {
-      id: box3Ref.id,
-      ownerMemberId: memberId,
-      visibility: 'family',
-      name: 'Viagem dos Sonhos',
-      category: 'dream',
-      targetAmountCents: 800000,
-      currentBalanceCents: 0,
-      targetDate: '2027-07-31',
-      color: '#3F6FD8',
-      icon: 'plane',
-    };
-    batch.set(box3Ref, { ...box3, createdAt: nowIso });
-
-    // Salvar todas as categorias padrão diretamente no Firestore
-    DEFAULT_CATEGORIES.forEach((cat) => {
-      const catRef = doc(collection(db, `families/${familyId}/categories`), cat.id);
-      batch.set(catRef, {
-        id: cat.id,
-        name: cat.name,
-        type: cat.type,
-        icon: cat.icon,
-        color: cat.color,
-        isCustom: true,
-        createdAt: nowIso,
-      });
-    });
-
-    // Firestore aceita batch offline e enfileira
-    batch.commit().catch(() => {});
-
-    const userProfile: UserProfile = {
-      uid: authUser.uid,
-      familyId,
-      memberId,
-      role: 'chefe-familia',
-      displayName: name,
-      email,
-      color: '#F5B82E',
-      isMinor: false,
-    };
-
-    saveLocalUser(userProfile, [headMember], [box1, box2, box3]);
-
-    return {
-      user: userProfile,
-      familyMembers: [headMember],
-      boxes: [box1, box2, box3],
-      accounts: [],
-      isOfflineMode: false,
-    };
-  } catch (error: any) {
-    // Trata falhas de rede ou serviço de Auth não ativado no console (auth/configuration-not-found / auth/operation-not-allowed)
-    const isOfflineOrNotConfigured =
-      error?.code === 'auth/network-request-failed' ||
-      error?.code === 'auth/configuration-not-found' ||
-      error?.code === 'auth/operation-not-allowed' ||
-      error?.code === 'auth/admin-restricted-operation' ||
-      error?.message?.includes('network') ||
-      error?.message?.includes('configuration-not-found');
-
-    if (isOfflineOrNotConfigured) {
-      console.warn('Firebase Auth indisponível ou não configurado. Ativando modo local persistente para cadastro:', error);
-
-      const localFamilyId = `fam_local_${Date.now()}`;
-      const localMemberId = `mem_chefe_${Date.now()}`;
-      const localUid = `usr_local_${Date.now()}`;
-
-      const headMember: FamilyMember = {
-        id: localMemberId,
-        authUid: localUid,
-        role: 'chefe-familia',
-        name,
-        displayName: name.split(' ')[0],
-        email,
-        color: '#F5B82E',
+  if (familyMembers.length === 0) {
+    familyMembers = [
+      {
+        id: memberId,
+        authUid: userDoc.id,
+        role: (userData.role as any) || 'chefe-familia',
+        name: userData.name || userData.displayName || emailLower.split('@')[0],
+        displayName: (userData.displayName || userData.name || emailLower.split('@')[0]).split(' ')[0],
+        email: userData.email || emailLower,
+        color: userData.color || '#F5B82E',
         isMinor: false,
         status: 'active',
-      };
-
-      const defaultBoxes: BoxGoal[] = [
-        {
-          id: 'box_01',
-          ownerMemberId: localMemberId,
-          visibility: 'family',
-          name: 'Reserva de Emergência',
-          category: 'emergency',
-          targetAmountCents: 1800000,
-          currentBalanceCents: 0,
-          color: '#F5B82E',
-          icon: 'shield',
-        },
-        {
-          id: 'box_02',
-          ownerMemberId: localMemberId,
-          visibility: 'family',
-          name: 'Investimentos',
-          category: 'investment',
-          targetAmountCents: 5000000,
-          currentBalanceCents: 0,
-          color: '#0A1F44',
-          icon: 'chart',
-        },
-      ];
-
-      const userProfile: UserProfile = {
-        uid: localUid,
-        familyId: localFamilyId,
-        memberId: localMemberId,
-        role: 'chefe-familia',
-        displayName: name,
-        email,
-        color: '#F5B82E',
-        isMinor: false,
-      };
-
-      saveLocalUser(userProfile, [headMember], defaultBoxes);
-
-      return {
-        user: userProfile,
-        familyMembers: [headMember],
-        boxes: defaultBoxes,
-        accounts: [],
-        isOfflineMode: true,
-      };
-    }
-
-    throw error;
+      },
+    ];
   }
+
+  const userProfile: UserProfile = {
+    uid: userDoc.id,
+    familyId,
+    memberId,
+    role: (userData.role as any) || 'chefe-familia',
+    displayName: userData.displayName || userData.name || emailLower.split('@')[0],
+    email: userData.email || emailLower,
+    color: userData.color || '#F5B82E',
+    isMinor: !!userData.isMinor,
+  };
+
+  saveLocalUser(userProfile, familyMembers, boxes);
+
+  return {
+    user: userProfile,
+    familyMembers,
+    boxes,
+    accounts,
+    isOfflineMode: false,
+  };
 }
 
 /**
- * Autentica o usuário no Firebase ou utiliza o cache local se estiver offline
- */
-export async function loginUser(email: string, pass: string): Promise<AuthSuccessResult> {
-  try {
-    const credential = await withTimeout(
-      signInWithEmailAndPassword(auth, email, pass)
-    );
-    const authUser = credential.user;
-
-    try {
-      const memberQuery = query(
-        collectionGroup(db, 'members'),
-        where('authUid', '==', authUser.uid)
-      );
-      const memberSnap = await getDocs(memberQuery);
-
-      if (!memberSnap.empty) {
-        const memberDoc = memberSnap.docs[0];
-        const memberData = memberDoc.data() as FamilyMember;
-        const familyRef = memberDoc.ref.parent.parent;
-        const familyId = familyRef ? familyRef.id : 'fam_default';
-
-        const allMembersSnap = await getDocs(collection(db, `families/${familyId}/members`));
-        const familyMembers: FamilyMember[] = allMembersSnap.docs.map((d) => d.data() as FamilyMember);
-
-        const boxesSnap = await getDocs(collection(db, `families/${familyId}/boxes`));
-        const boxes: BoxGoal[] = boxesSnap.docs.map((d) => d.data() as BoxGoal);
-
-        const accountsSnap = await getDocs(collection(db, `families/${familyId}/accounts`));
-        const accounts: BankAccount[] = accountsSnap.docs.map((d) => d.data() as BankAccount);
-
-        const userProfile: UserProfile = {
-          uid: authUser.uid,
-          familyId,
-          memberId: memberData.id,
-          role: memberData.role,
-          displayName: authUser.displayName || memberData.name || 'Lucas Martins',
-          email: authUser.email || email,
-          color: memberData.color || '#F5B82E',
-          avatarUrl: authUser.photoURL || memberData.avatarUrl,
-          isMinor: memberData.isMinor,
-        };
-
-        saveLocalUser(userProfile, familyMembers, boxes);
-
-        return {
-          user: userProfile,
-          familyMembers,
-          boxes,
-          accounts,
-          isOfflineMode: false,
-        };
-      }
-    } catch {
-      // Ignora erro de Firestore e segue
-    }
-
-    const fallbackUser: UserProfile = {
-      uid: authUser.uid,
-      familyId: 'fam_01',
-      memberId: 'mem_chefe_01',
-      role: 'chefe-familia',
-      displayName: authUser.displayName || 'Lucas Martins',
-      email: authUser.email || email,
-      color: '#F5B82E',
-    };
-
-    return {
-      user: fallbackUser,
-      familyMembers: [],
-      boxes: [],
-      accounts: [],
-      isOfflineMode: false,
-    };
-  } catch (error: any) {
-    const isOfflineOrNotConfigured =
-      error?.code === 'auth/network-request-failed' ||
-      error?.code === 'auth/configuration-not-found' ||
-      error?.code === 'auth/operation-not-allowed' ||
-      error?.code === 'auth/admin-restricted-operation' ||
-      error?.message?.includes('network') ||
-      error?.message?.includes('configuration-not-found');
-
-    if (isOfflineOrNotConfigured) {
-      console.warn('Modo local acionado no login:', error);
-
-      const cached = localStorage.getItem('partiu_last_user');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          return {
-            ...parsed,
-            isOfflineMode: true,
-          };
-        } catch {
-          // Continue
-        }
-      }
-
-      // Sessão offline fallback para não travar o usuário
-      const fallbackUser: UserProfile = {
-        uid: 'demo_user_offline',
-        familyId: 'fam_demo_01',
-        memberId: 'mem_chefe_01',
-        role: 'chefe-familia',
-        displayName: 'Lucas Martins',
-        email: email || 'lucas@partiuinvest.com.br',
-        color: '#F5B82E',
-      };
-
-      return {
-        user: fallbackUser,
-        familyMembers: [],
-        boxes: [],
-        accounts: [],
-        isOfflineMode: true,
-      };
-    }
-
-    throw error;
-  }
-}
-
-/**
- * Login com Google Auth ou Fallback Offline
+ * Login com Google
  */
 export async function loginWithGoogle(): Promise<AuthSuccessResult> {
-  try {
-    const provider = new GoogleAuthProvider();
-    const credential = await withTimeout(signInWithPopup(auth, provider));
-    const authUser = credential.user;
-
-    return loginUser(authUser.email || '', '');
-  } catch (error: any) {
-    const isFallbackNeeded =
-      error?.code === 'auth/network-request-failed' ||
-      error?.code === 'auth/popup-closed-by-user' ||
-      error?.code === 'auth/configuration-not-found' ||
-      error?.code === 'auth/operation-not-allowed';
-
-    if (isFallbackNeeded) {
-      const fallbackUser: UserProfile = {
-        uid: 'google_user_offline',
-        familyId: 'fam_demo_01',
-        memberId: 'mem_chefe_01',
-        role: 'chefe-familia',
-        displayName: 'Lucas Martins (Google)',
-        email: 'lucas.martins@gmail.com',
-        color: '#F5B82E',
-      };
-
-      return {
-        user: fallbackUser,
-        familyMembers: [],
-        boxes: [],
-        accounts: [],
-        isOfflineMode: true,
-      };
-    }
-
-    throw error;
-  }
+  const err: any = new Error('Para utilizar login com Google, ative o provedor Google no Firebase Console.');
+  err.code = 'auth/operation-not-allowed';
+  throw err;
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { UserProfile, FamilyMember, BankAccount, BoxGoal, FinancialTransaction, FinancialCategory } from '../../core/types';
 import { DEFAULT_CATEGORIES } from '../../core/categories';
+import { FamilyBudgetConfig } from '../budget/infrastructure/budgetService';
 
 interface AppState {
   user: UserProfile | null;
@@ -11,6 +12,7 @@ interface AppState {
   boxes: BoxGoal[];
   transactions: FinancialTransaction[];
   categories: FinancialCategory[];
+  budgetConfig: FamilyBudgetConfig | null;
   selectedYearMonth: string; // formato YYYY-MM (ex: '2026-09')
   periodFilter: {
     type: 'month' | 'custom' | 'all';
@@ -21,6 +23,7 @@ interface AppState {
   };
   initialSetupDone: boolean;
   isInitialSetupOpen: boolean;
+  isBudgetSetupOpen: boolean;
   isDataLoaded: boolean;
   isOffline: boolean;
   setUser: (user: UserProfile | null) => void;
@@ -30,6 +33,7 @@ interface AppState {
   setSelectedYearMonth: (ym: string) => void;
   setInitialSetupDone: (done: boolean) => void;
   setIsInitialSetupOpen: (open: boolean) => void;
+  setIsBudgetSetupOpen: (open: boolean) => void;
   setPeriodFilter: (filter: {
     type: 'month' | 'custom' | 'all';
     yearMonth?: string;
@@ -67,6 +71,10 @@ const getInitialUser = (): UserProfile | null => {
     const cached = localStorage.getItem('partiu_last_user');
     if (cached) {
       const parsed = JSON.parse(cached);
+      if (parsed?.user?.uid === 'demo_user_offline' || parsed?.user?.uid === 'google_user_offline') {
+        localStorage.removeItem('partiu_last_user');
+        return null;
+      }
       return parsed.user || null;
     }
   } catch {}
@@ -90,6 +98,7 @@ export const useAppStore = create<AppState>((set) => {
     familyMembers: [],
     selectedMemberId: 'all',
     selectedYearMonth: initialYM,
+    budgetConfig: null,
     periodFilter: {
       type: 'month',
       yearMonth: initialYM,
@@ -100,6 +109,7 @@ export const useAppStore = create<AppState>((set) => {
     categories: DEFAULT_CATEGORIES,
     initialSetupDone: false,
     isInitialSetupOpen: false,
+    isBudgetSetupOpen: false,
     isDataLoaded: false,
     isOffline: !navigator.onLine,
 
@@ -109,6 +119,7 @@ export const useAppStore = create<AppState>((set) => {
     setSelectedMemberId: (selectedMemberId) => set({ selectedMemberId }),
     setInitialSetupDone: (initialSetupDone) => set({ initialSetupDone }),
     setIsInitialSetupOpen: (isInitialSetupOpen) => set({ isInitialSetupOpen }),
+    setIsBudgetSetupOpen: (isBudgetSetupOpen) => set({ isBudgetSetupOpen }),
     setSelectedYearMonth: (selectedYearMonth) =>
       set({
         selectedYearMonth,
@@ -202,6 +213,7 @@ export const useAppStore = create<AppState>((set) => {
         accounts: data.accounts !== undefined ? data.accounts : state.accounts,
         transactions: data.transactions !== undefined ? data.transactions : state.transactions,
         categories: data.categories !== undefined ? data.categories : state.categories,
+        budgetConfig: (data as any).budgetConfig !== undefined ? (data as any).budgetConfig : state.budgetConfig,
         initialSetupDone: (data as any).initialSetupDone !== undefined ? (data as any).initialSetupDone : state.initialSetupDone,
         isDataLoaded: true,
       })),

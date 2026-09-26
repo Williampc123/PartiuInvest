@@ -15,6 +15,7 @@ import {
   Sparkles,
   AlertCircle,
   HelpCircle,
+  Trash2,
 } from 'lucide-react';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { FinancialTransaction, FamilyMember, BankAccount, FinancialCategory } from '@/core/types';
@@ -22,9 +23,12 @@ import { Money } from '@/core/Money';
 import {
   updateTransactionInFirestore,
   updateMultipleTransactionsInFirestore,
+  deleteTransactionFromFirestore,
+  deleteMultipleTransactionsFromFirestore,
 } from '@/features/dashboard/infrastructure/firestoreDataService';
 import { NewCategoryModal } from '@/features/categories/presentation/components/NewCategoryModal';
 import { NewAccountModal } from '@/features/accounts/presentation/components/NewAccountModal';
+import Swal from 'sweetalert2';
 
 export interface InstallmentInfo {
   isInstallment: boolean;
@@ -107,6 +111,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
     accounts,
     categories,
     transactions,
+    setTransactions,
     updateTransaction,
     updateMultipleTransactions,
   } = useAppStore();
@@ -123,7 +128,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [showInstallmentChoice, setShowInstallmentChoice] = useState(false);
+  const [installmentScope, setInstallmentScope] = useState<'all' | 'upcoming' | 'previous' | 'single'>('upcoming');
   const [isNewCatModalOpen, setIsNewCatModalOpen] = useState(false);
   const [isNewAccountModalOpen, setIsNewAccountModalOpen] = useState(false);
 
@@ -131,6 +136,27 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   const installmentInfo = useMemo(() => {
     return getInstallmentInfo(transaction, transactions);
   }, [transaction, transactions]);
+
+  // Calcular quantidade de parcelas para cada escopo (declarado incondicionalmente no topo)
+  const upcomingSisters = useMemo(() => {
+    const currentNum = installmentInfo.installmentNumber;
+    return installmentInfo.sisterTransactions.filter((s) => {
+      const match = s.description.match(/\s*\((\d+)\/(\d+)\)$/);
+      const sNum = s.installmentNumber || (match ? parseInt(match[1], 10) : 0);
+      if (sNum && currentNum) return sNum >= currentNum;
+      return (s.date || '') >= (transaction?.date || '');
+    });
+  }, [installmentInfo, transaction]);
+
+  const previousSisters = useMemo(() => {
+    const currentNum = installmentInfo.installmentNumber;
+    return installmentInfo.sisterTransactions.filter((s) => {
+      const match = s.description.match(/\s*\((\d+)\/(\d+)\)$/);
+      const sNum = s.installmentNumber || (match ? parseInt(match[1], 10) : 0);
+      if (sNum && currentNum) return sNum <= currentNum;
+      return (s.date || '') <= (transaction?.date || '');
+    });
+  }, [installmentInfo, transaction]);
 
   // Inicializar formulário quando a transação for aberta
   useEffect(() => {
@@ -151,7 +177,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       setSelectedAccountId(transaction.accountId || accounts[0]?.id || 'wallet');
       setVisibility(transaction.visibility || 'family');
       setIsPaid(transaction.isPaid === true);
-      setShowInstallmentChoice(false);
+      setInstallmentScope('upcoming');
       setSuccess(false);
     }
   }, [transaction, isOpen]);
@@ -179,87 +205,69 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
     return isNaN(num) ? 0 : Math.round(num * 100);
   };
 
-  // Submissão do formulário principal
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amountCents = parseAmountToCents(amountInput);
-
-    if (amountCents <= 0 || !description.trim()) {
-      return;
-    }
-
-    // Se fizer parte de um parcelamento com múltiplas parcelas, perguntar escopo
-    if (installmentInfo.isInstallment && installmentInfo.sisterTransactions.length > 1) {
-      setShowInstallmentChoice(true);
-      return;
-    }
-
-    // Caso contrário, salvar diretamente a transação única
-    handleSaveSingle();
-  };
-
-  // Salvar apenas a transação/parcela selecionada
-  const handleSaveSingle = async () => {
-    if (!transaction || !user?.familyId) return;
-
-    const amountCents = parseAmountToCents(amountInput);
-    const finalAmountCents = type === 'expense' ? -Math.abs(amountCents) : Math.abs(amountCents);
-
-    // Se for parcela, manter o sufixo (X/Y)
-    const suffix = installmentInfo.isInstallment
-      ? ` (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments})`
-      : '';
-    const finalDescription = `${description.trim()}${suffix}`;
-
-    setLoading(true);
-    try {
-      const updates: Partial<FinancialTransaction> = {
-        description: finalDescription,
-        amountCents: finalAmountCents,
-        category,
-        date,
-        accountId: selectedAccountId,
-        memberId: selectedMemberId || user.memberId,
-        visibility,
-        isPaid,
-        type: transaction.isRecurring && type === 'expense' ? 'bill' : type,
-      };
-
-      await updateTransactionInFirestore(user.familyId, transaction.id, updates);
-
-      const updatedTransaction: FinancialTransaction = {
-        ...transaction,
-        ...updates,
-      };
-      updateTransaction(updatedTransaction);
-
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        onSuccess?.();
-        onClose();
-      }, 1000);
-    } catch (err) {
-      console.error('Erro ao atualizar movimentação:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Salvar em todas as parcelas da série
-  const handleSaveAllInstallments = async () => {
+  // Salvar com escopo selecionado no dropdown (todas, próximas, anteriores, apenas esta)
+  const handleSaveWithScope = async (scope: 'all' | 'upcoming' | 'previous' | 'single') => {
     if (!transaction || !user?.familyId) return;
 
     const amountCents = parseAmountToCents(amountInput);
     const finalAmountCents = type === 'expense' ? -Math.abs(amountCents) : Math.abs(amountCents);
     const cleanBaseDesc = description.trim();
 
+    if (scope === 'single' || !installmentInfo.isInstallment) {
+      const suffix = installmentInfo.isInstallment
+        ? ` (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments})`
+        : '';
+      const finalDescription = `${cleanBaseDesc}${suffix}`;
+
+      setLoading(true);
+      try {
+        const updates: Partial<FinancialTransaction> = {
+          description: finalDescription,
+          amountCents: finalAmountCents,
+          category,
+          date,
+          accountId: selectedAccountId,
+          memberId: selectedMemberId || user.memberId,
+          visibility,
+          isPaid,
+          type: transaction.isRecurring && type === 'expense' ? 'bill' : type,
+        };
+
+        await updateTransactionInFirestore(user.familyId, transaction.id, updates);
+
+        const updatedTransaction: FinancialTransaction = {
+          ...transaction,
+          ...updates,
+        };
+        updateTransaction(updatedTransaction);
+
+        setSuccess(true);
+        setTimeout(() => {
+          setSuccess(false);
+          onSuccess?.();
+          onClose();
+        }, 1000);
+      } catch (err) {
+        console.error('Erro ao atualizar movimentação:', err);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    let targetSisters = installmentInfo.sisterTransactions;
+    if (scope === 'upcoming') {
+      targetSisters = upcomingSisters;
+    } else if (scope === 'previous') {
+      targetSisters = previousSisters;
+    }
+
     setLoading(true);
     try {
       const batchUpdates: { id: string; updates: Partial<FinancialTransaction> }[] = [];
       const updatedList: FinancialTransaction[] = [];
 
-      for (const sister of installmentInfo.sisterTransactions) {
+      for (const sister of targetSisters) {
         const match = sister.description.match(/\s*\((\d+)\/(\d+)\)$/);
         const sisterNum = sister.installmentNumber || (match ? parseInt(match[1], 10) : 1);
         const sisterTotal = sister.totalInstallments || (match ? parseInt(match[2], 10) : installmentInfo.totalInstallments);
@@ -296,10 +304,134 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
         onClose();
       }, 1000);
     } catch (err) {
-      console.error('Erro ao atualizar todas as parcelas:', err);
+      console.error(`Erro ao atualizar parcelas (${scope}):`, err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Exclusão com suporte a parcelas vinculadas a partir da modal
+  const handleDeleteFromModal = async () => {
+    if (!user?.familyId || !transaction) return;
+
+    const hasSisterInstallments = installmentInfo.isInstallment && installmentInfo.sisterTransactions.length > 1;
+
+    if (hasSisterInstallments) {
+      const result = await Swal.fire({
+        title: 'Excluir Movimentação Parcelada',
+        html: `
+          <div class="text-left text-sm text-navy space-y-2.5">
+            <p>A movimentação <b>"${transaction.description}"</b> faz parte de uma série de <b>${installmentInfo.totalInstallments} parcelas</b>.</p>
+            <p class="text-muted text-xs">Como você deseja realizar a exclusão?</p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: `🗑️ Deletar todas as parcelas (${installmentInfo.sisterTransactions.length})`,
+        denyButtonText: `📄 Deletar somente esta (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments})`,
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#DC2626',
+        denyButtonColor: '#475569',
+        cancelButtonColor: '#94A3B8',
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: {
+          popup: 'rounded-3xl border border-navy/10 shadow-2xl p-6 font-sans',
+          confirmButton: 'rounded-xl text-xs font-bold py-2.5 px-3.5 shadow-sm',
+          denyButton: 'rounded-xl text-xs font-bold py-2.5 px-3.5 shadow-sm',
+          cancelButton: 'rounded-xl text-xs font-bold py-2.5 px-3.5',
+        },
+      });
+
+      if (result.isConfirmed) {
+        try {
+          const idsToDelete = installmentInfo.sisterTransactions.map((st) => st.id);
+          await deleteMultipleTransactionsFromFirestore(user.familyId, idsToDelete);
+          const idsSet = new Set(idsToDelete);
+          setTransactions(transactions.filter((t) => !idsSet.has(t.id)));
+          onClose();
+          Swal.fire({
+            title: 'Excluído!',
+            text: `Todas as ${idsToDelete.length} parcelas vinculadas foram removidas com sucesso.`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-2xl font-sans' },
+          });
+        } catch (err) {
+          console.error('Erro ao deletar parcelas vinculadas:', err);
+          Swal.fire('Erro', 'Não foi possível remover as parcelas.', 'error');
+        }
+      } else if (result.isDenied) {
+        try {
+          await deleteTransactionFromFirestore(user.familyId, transaction.id);
+          setTransactions(transactions.filter((t) => t.id !== transaction.id));
+          onClose();
+          Swal.fire({
+            title: 'Excluído!',
+            text: `A parcela (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments}) foi removida.`,
+            icon: 'success',
+            timer: 1800,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-2xl font-sans' },
+          });
+        } catch (err) {
+          console.error('Erro ao deletar parcela:', err);
+          Swal.fire('Erro', 'Não foi possível remover a movimentação.', 'error');
+        }
+      }
+    } else {
+      // Movimentação avulsa simples
+      const result = await Swal.fire({
+        title: 'Excluir Movimentação?',
+        html: `<p class="text-sm text-navy">Tem certeza que deseja remover <b>"${transaction.description}"</b>?</p>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#DC2626',
+        cancelButtonColor: '#94A3B8',
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: {
+          popup: 'rounded-3xl border border-navy/10 shadow-2xl p-6 font-sans',
+          confirmButton: 'rounded-xl text-xs font-bold py-2.5 px-4 shadow-sm',
+          cancelButton: 'rounded-xl text-xs font-bold py-2.5 px-4',
+        },
+      });
+
+      if (result.isConfirmed) {
+        try {
+          await deleteTransactionFromFirestore(user.familyId, transaction.id);
+          setTransactions(transactions.filter((t) => t.id !== transaction.id));
+          onClose();
+          Swal.fire({
+            title: 'Excluído!',
+            text: 'Movimentação removida com sucesso.',
+            icon: 'success',
+            timer: 1800,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-2xl font-sans' },
+          });
+        } catch (err) {
+          console.error('Erro ao deletar movimentação:', err);
+          Swal.fire('Erro', 'Não foi possível remover a movimentação.', 'error');
+        }
+      }
+    }
+  };
+
+  // Submissão do formulário principal
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amountCents = parseAmountToCents(amountInput);
+
+    if (amountCents <= 0 || !description.trim()) {
+      return;
+    }
+
+    handleSaveWithScope(installmentInfo.isInstallment ? installmentScope : 'single');
   };
 
   return (
@@ -323,112 +455,7 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
               A movimentação financeira foi atualizada com sucesso no painel da família.
             </p>
           </div>
-        ) : showInstallmentChoice ? (
-          /* ==========================================================
-             PASSO 2: ESCOLHA DE ESCOPO PARA PARCELAS
-             ========================================================== */
-          <div className="space-y-4 animate-in fade-in slide-in-from-right-2 duration-200">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="pill bg-gold/20 text-[#7A4F08] text-[11px] font-bold flex items-center gap-1">
-                  <Repeat className="h-3 w-3" />
-                  Parcelamento Detectado
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-navy">
-                Como deseja aplicar esta alteração?
-              </h3>
-              <p className="text-xs text-muted">
-                Esta movimentação é a <b>parcela {installmentInfo.installmentNumber} de {installmentInfo.totalInstallments}</b> ({installmentInfo.sisterTransactions.length} parcelas encontradas no sistema).
-              </p>
-            </div>
-
-            {/* Prévia das alterações */}
-            <div className="p-3 rounded-2xl bg-navy/5 border border-navy/10 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-muted">Nova Descrição Base:</span>
-                <b className="text-navy">{description.trim()}</b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Novo Valor por Parcela:</span>
-                <b className={type === 'income' ? 'text-ok' : 'text-danger'}>
-                  {type === 'income' ? '+ ' : '- '}
-                  {Money.formatCents(parseAmountToCents(amountInput))}
-                </b>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Categoria & Conta:</span>
-                <span className="text-navy font-medium">
-                  {category} • {accounts.find((a) => a.id === selectedAccountId)?.name || 'Carteira'}
-                </span>
-              </div>
-            </div>
-
-            {/* Opções de Escopo */}
-            <div className="space-y-2.5 pt-1">
-              {/* Opção 1: Apenas nesta parcela */}
-              <button
-                type="button"
-                onClick={handleSaveSingle}
-                disabled={loading}
-                className="w-full text-left p-3.5 rounded-2xl border-2 border-navy/15 hover:border-gold hover:bg-gold/[0.04] transition group flex items-start justify-between gap-3 cursor-pointer"
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-1.5 font-bold text-sm text-navy group-hover:text-gold-deep">
-                    <Calendar className="h-4 w-4 text-gold-deep shrink-0" />
-                    <span>Alterar apenas nesta parcela ({installmentInfo.installmentNumber}/{installmentInfo.totalInstallments})</span>
-                  </div>
-                  <p className="text-xs text-muted leading-relaxed">
-                    Apenas o lançamento deste mês será modificado. As outras {installmentInfo.totalInstallments - 1} parcelas permanecerão inalteradas.
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted group-hover:text-gold-deep shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" />
-              </button>
-
-              {/* Opção 2: Em todas as parcelas */}
-              <button
-                type="button"
-                onClick={handleSaveAllInstallments}
-                disabled={loading}
-                className="w-full text-left p-3.5 rounded-2xl border-2 border-gold/40 bg-gold/10 hover:border-gold hover:bg-gold/15 transition group flex items-start justify-between gap-3 cursor-pointer"
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-1.5 font-bold text-sm text-navy group-hover:text-gold-deep">
-                    <Layers className="h-4 w-4 text-gold-deep shrink-0" />
-                    <span>Alterar em todas as {installmentInfo.sisterTransactions.length} parcelas</span>
-                  </div>
-                  <p className="text-xs text-muted leading-relaxed">
-                    Aplica a nova descrição, valor, categoria e conta a <b>todas as parcelas</b> da série, mantendo os vencimentos mensais programados.
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-gold-deep shrink-0 mt-1 transition-transform group-hover:translate-x-0.5" />
-              </button>
-            </div>
-
-            {/* Botões do Rodapé de Escopo */}
-            <div className="flex items-center justify-between pt-3 border-t border-navy/10">
-              <button
-                type="button"
-                onClick={() => setShowInstallmentChoice(false)}
-                disabled={loading}
-                className="btn-line text-xs h-9 px-3.5"
-              >
-                Voltar à Edição
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                className="text-xs text-muted hover:text-navy"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
         ) : (
-          /* ==========================================================
-             PASSO 1: FORMULÁRIO DE EDIÇÃO PRINCIPAL
-             ========================================================== */
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <div className="flex items-center justify-between">
@@ -632,23 +659,93 @@ export const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
               </button>
             </div>
 
+            {/* Dropdown de Escopo de Alteração nas Demais Parcelas */}
+            {installmentInfo.isInstallment && (
+              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-gold/15 to-gold/5 border border-gold/40 space-y-2.5 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="installment-scope-select" className="text-xs font-extrabold text-navy flex items-center gap-1.5">
+                    <Repeat className="h-4 w-4 text-gold-deep" />
+                    <span>Aplicar alterações em:</span>
+                  </label>
+                  <span className="pill bg-gold/25 text-[#7A4F08] border border-gold/40 text-[10px] font-bold">
+                    Parcela {installmentInfo.installmentNumber} de {installmentInfo.totalInstallments}
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <select
+                    id="installment-scope-select"
+                    value={installmentScope}
+                    onChange={(e) => setInstallmentScope(e.target.value as any)}
+                    className="w-full h-11 pl-3.5 pr-9 rounded-xl border border-gold/50 bg-white text-xs sm:text-sm font-bold text-navy focus:ring-2 focus:ring-gold focus:outline-none appearance-none cursor-pointer shadow-sm"
+                  >
+                    <option value="upcoming">
+                      ⏩ Alterar somente as próximas ({upcomingSisters.length} parcelas: {installmentInfo.installmentNumber} a {installmentInfo.totalInstallments})
+                    </option>
+                    <option value="all">
+                      🔁 Alterar todas as parcelas ({installmentInfo.sisterTransactions.length} parcelas conectadas)
+                    </option>
+                    <option value="previous">
+                      ⏪ Alterar somente as anteriores ({previousSisters.length} parcelas: 1 a {installmentInfo.installmentNumber})
+                    </option>
+                    <option value="single">
+                      📅 Alterar apenas nesta parcela ({installmentInfo.installmentNumber}/{installmentInfo.totalInstallments})
+                    </option>
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gold-deep">
+                    <Layers className="h-4 w-4" />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted flex items-start gap-1.5 leading-tight">
+                  <Sparkles className="h-3.5 w-3.5 text-gold-deep shrink-0 mt-0.5" />
+                  <span>
+                    {installmentScope === 'all' && (
+                      <>Aplica as alterações em <b>todas as {installmentInfo.sisterTransactions.length} parcelas</b> conectadas da série.</>
+                    )}
+                    {installmentScope === 'upcoming' && (
+                      <>Aplica as alterações nesta parcela (<b>{installmentInfo.installmentNumber}</b>) e em todas as <b>parcelas futuras</b> ({installmentInfo.installmentNumber} a {installmentInfo.totalInstallments}).</>
+                    )}
+                    {installmentScope === 'previous' && (
+                      <>Aplica as alterações nesta parcela (<b>{installmentInfo.installmentNumber}</b>) e em todas as <b>parcelas passadas</b> (1 a {installmentInfo.installmentNumber}).</>
+                    )}
+                    {installmentScope === 'single' && (
+                      <>Modifica <b>exclusivamente</b> esta parcela ({installmentInfo.installmentNumber}/{installmentInfo.totalInstallments}). As demais permanecerão intactas.</>
+                    )}
+                  </span>
+                </p>
+              </div>
+            )}
+
             {/* Botões de Ação */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-navy/10">
+            <div className="flex items-center justify-between gap-2.5 pt-3 border-t border-navy/10">
               <button
                 type="button"
-                onClick={onClose}
-                className="btn-line text-xs h-10 px-4"
+                onClick={handleDeleteFromModal}
+                className="btn-line text-xs h-10 px-3.5 text-danger border-danger/30 hover:bg-danger/10 hover:border-danger gap-1.5 font-bold"
+                title="Excluir movimentação"
               >
-                Cancelar
+                <Trash2 className="h-4 w-4" />
+                <span>Excluir</span>
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-gold text-xs h-10 px-5 gap-1.5"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span>{loading ? 'Salvando...' : 'Salvar Alterações'}</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="btn-line text-xs h-10 px-4"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-gold text-xs h-10 px-5 gap-1.5 font-bold"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>{loading ? 'Salvando...' : 'Salvar Alterações'}</span>
+                </button>
+              </div>
             </div>
           </form>
         )}

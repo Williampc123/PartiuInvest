@@ -1,7 +1,9 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/features/auth/useAppStore';
-import { X, LogOut, Sparkles } from 'lucide-react';
+import { auth } from '@/infrastructure/firebase/firebase';
+import { signOut } from 'firebase/auth';
+import { X, LogOut, Sparkles, PieChart } from 'lucide-react';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -14,10 +16,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
   onOpenOpenFinance,
 }) => {
-  const { user, setUser } = useAppStore();
+  const { user, setUser, setIsInitialSetupOpen, setIsBudgetSetupOpen } = useAppStore();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch {}
     localStorage.removeItem('partiu_jwt_token');
     localStorage.removeItem('partiu_last_user');
     setUser(null);
@@ -189,23 +194,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             {/* Informações do Usuário no Drawer Mobile */}
-            <div className="my-3 flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-br from-gold/15 to-gold/5 border border-gold/30">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-gold-light to-[#E2A11B] text-xs font-black text-navy-deep shadow-sm">
-                {user?.displayName
-                  ? user.displayName
-                      .split(' ')
-                      .map((w: string) => w[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase()
-                  : 'PI'}
-              </span>
-              <div className="min-w-0 flex-1">
-                <b className="block text-sm font-bold text-navy truncate">{user?.displayName || 'Investidor'}</b>
-                <span className="pill bg-gold/25 text-[#7A4F08] text-[10px] py-0 px-2 font-bold">
-                  {user?.role === 'chefe-familia' ? '👑 Chefe de Família' : 'Membro'}
+            <div className="my-3 space-y-2">
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-br from-gold/15 to-gold/5 border border-gold/30">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-gold-light to-[#E2A11B] text-xs font-black text-navy-deep shadow-sm">
+                  {user?.displayName
+                    ? user.displayName
+                        .split(' ')
+                        .map((w: string) => w[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()
+                    : 'PI'}
                 </span>
+                <div className="min-w-0 flex-1">
+                  <b className="block text-sm font-bold text-navy truncate">{user?.displayName || 'Investidor'}</b>
+                  <span className="pill bg-gold/25 text-[#7A4F08] text-[10px] py-0 px-2 font-bold">
+                    {user?.role === 'chefe-familia' ? '👑 Chefe de Família' : 'Membro'}
+                  </span>
+                </div>
               </div>
+
+              {/* Botão de Configuração Inicial no Mobile */}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose?.();
+                  setIsInitialSetupOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white border border-gold/40 text-left text-xs font-bold text-navy hover:bg-gold/10 transition shadow-sm active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-gold/20 flex items-center justify-center text-gold-deep">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </div>
+                  <span>Configuração Inicial</span>
+                </div>
+                <span className="text-[10px] text-gold-deep font-extrabold uppercase tracking-wide">Abrir</span>
+              </button>
+
+              {/* Botão de Separação de Orçamento no Mobile */}
+              <button
+                type="button"
+                onClick={() => {
+                  onClose?.();
+                  setIsBudgetSetupOpen(true);
+                }}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white border border-emerald-500/40 text-left text-xs font-bold text-navy hover:bg-emerald-50 transition shadow-sm active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-700">
+                    <PieChart className="h-3.5 w-3.5" />
+                  </div>
+                  <span>Separação de Orçamento</span>
+                </div>
+                <span className="text-[10px] text-emerald-700 font-extrabold uppercase tracking-wide">Abrir</span>
+              </button>
             </div>
 
             {/* Navegação Principal no Mobile */}

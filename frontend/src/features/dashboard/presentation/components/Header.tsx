@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { formatPeriodLabel } from '@/core/dateUtils';
 import { PeriodSelectorModal } from './PeriodSelectorModal';
-import { Calendar, Menu } from 'lucide-react';
+import { Calendar, Menu, Sparkles, ChevronDown, Users, PieChart } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 interface HeaderProps {
@@ -23,9 +23,24 @@ export const Header: React.FC<HeaderProps> = ({
     periodFilter,
     goToPreviousMonth,
     goToNextMonth,
+    setIsInitialSetupOpen,
+    setIsBudgetSetupOpen,
   } = useAppStore();
 
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fecha o menu de usuário ao clicar fora dele
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const isAll = selectedMemberId === 'all';
   const currentMember = familyMembers.find((m) => m.id === selectedMemberId);
@@ -149,17 +164,124 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="absolute right-3 top-[11px] h-[9px] w-[9px] rounded-full border-2 border-white bg-gold" />
         </button>
 
-        {/* Card do Usuário */}
-        <div className="glass flex h-11 items-center gap-2.5 rounded-2xl p-1 lg:pr-3.5">
-          <span aria-hidden="true" className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-gold-light to-[#E2A11B] text-[.85rem] font-extrabold text-navy-deep">
-            {initials}
-          </span>
-          <div className="hidden lg:block">
-            <b className="block text-[.9rem] leading-[1.1]">{user?.displayName || 'Investidor'}</b>
-            <small className="block text-[.74rem] leading-tight text-muted">
-              {user?.role === 'chefe-familia' ? 'Chefe de Família' : 'Membro'}
-            </small>
-          </div>
+        {/* Card do Usuário com Menu Dropdown (Hover Desktop + Touch/Click Mobile) */}
+        <div
+          ref={userMenuRef}
+          onMouseEnter={() => setIsUserMenuOpen(true)}
+          onMouseLeave={() => setIsUserMenuOpen(false)}
+          className="relative"
+        >
+          <button
+            type="button"
+            onClick={() => setIsUserMenuOpen((prev) => !prev)}
+            aria-expanded={isUserMenuOpen}
+            aria-label="Menu do usuário"
+            title="Clique ou passe o mouse para abrir as configurações"
+            className={`glass flex h-11 items-center gap-2 rounded-2xl p-1 lg:pr-3 transition cursor-pointer select-none text-left border ${
+              isUserMenuOpen
+                ? 'border-gold bg-white shadow-md ring-2 ring-gold/40'
+                : 'border-white/80 hover:bg-white/90 hover:border-gold/50'
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-gold-light to-[#E2A11B] text-[.85rem] font-extrabold text-navy-deep shadow-sm"
+            >
+              {initials}
+            </span>
+            <div className="hidden lg:block min-w-0 pr-1">
+              <b className="block text-[.9rem] leading-[1.1] truncate max-w-[130px]">
+                {user?.displayName || 'Investidor'}
+              </b>
+              <small className="block text-[.74rem] leading-tight text-muted">
+                {user?.role === 'chefe-familia' ? 'Chefe de Família' : 'Membro'}
+              </small>
+            </div>
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-navy/50 transition-transform duration-200 hidden lg:block shrink-0 ${
+                isUserMenuOpen ? 'rotate-180 text-gold-deep' : ''
+              }`}
+            />
+          </button>
+
+          {/* Menu Dropdown */}
+          {isUserMenuOpen && (
+            <div
+              className="absolute right-0 top-full mt-0.5 w-64 rounded-2xl bg-white/95 border border-white/90 shadow-[0_20px_45px_-12px_rgba(10,31,68,.3)] backdrop-blur-xl p-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 before:content-[''] before:absolute before:-top-3 before:inset-x-0 before:h-3"
+            >
+              {/* Header do Menu com Nome e Papel */}
+              <div className="p-2 pb-2.5 mb-1.5 border-b border-navy/10 flex items-center gap-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-gold-light to-[#E2A11B] text-xs font-black text-navy-deep shadow-sm">
+                  {initials}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <strong className="block text-xs font-bold text-navy truncate">
+                    {user?.displayName || 'Investidor'}
+                  </strong>
+                  <span className="pill bg-gold/20 text-gold-deep text-[10px] font-bold py-0.5 px-2 mt-0.5 inline-block">
+                    {user?.role === 'chefe-familia' ? '👑 Chefe de Família' : 'Membro'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Ações do Menu */}
+              <div className="space-y-1">
+                {/* Botão de Configuração Inicial */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsInitialSetupOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left text-xs font-bold text-navy bg-gradient-to-r from-gold/15 to-gold/5 hover:from-gold/25 hover:to-gold/15 transition border border-gold/35 group shadow-sm active:scale-[0.98]"
+                >
+                  <div className="h-7 w-7 rounded-lg bg-gold/30 flex items-center justify-center text-gold-deep group-hover:scale-110 transition shrink-0">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="block leading-tight text-navy-deep font-black">
+                      Configuração Inicial
+                    </span>
+                    <span className="block text-[10px] text-muted font-normal truncate">
+                      Família & Rendas Mensais
+                    </span>
+                  </div>
+                </button>
+
+                {/* Botão de Separação de Orçamento */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    setIsBudgetSetupOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left text-xs font-bold text-navy bg-gradient-to-r from-emerald-500/15 to-emerald-500/5 hover:from-emerald-500/25 hover:to-emerald-500/15 transition border border-emerald-500/35 group shadow-sm active:scale-[0.98]"
+                >
+                  <div className="h-7 w-7 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-700 group-hover:scale-110 transition shrink-0">
+                    <PieChart className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="block leading-tight text-navy-deep font-black">
+                      Separação de Orçamento
+                    </span>
+                    <span className="block text-[10px] text-muted font-normal truncate">
+                      Planejamento Mês a Mês (% e R$)
+                    </span>
+                  </div>
+                </button>
+
+                {/* Atalho para Gestão da Família */}
+                <NavLink
+                  to="/family"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs font-semibold text-navy hover:bg-navy/5 transition"
+                >
+                  <Users className="h-4 w-4 text-navy-soft shrink-0" />
+                  <span className="truncate">Minha Família / Membros</span>
+                </NavLink>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Botão de Nova Movimentação */}

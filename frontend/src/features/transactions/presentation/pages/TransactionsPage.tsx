@@ -21,13 +21,18 @@ import { Money } from '@/core/Money';
 import { FinancialTransaction, BankAccount } from '@/core/types';
 import {
   deleteTransactionFromFirestore,
+  deleteMultipleTransactionsFromFirestore,
   updateTransactionInFirestore,
 } from '@/features/dashboard/infrastructure/firestoreDataService';
 import { NewTransactionModal } from '@/features/dashboard/presentation/components/NewTransactionModal';
-import { EditTransactionModal } from '@/features/transactions/presentation/components/EditTransactionModal';
+import {
+  EditTransactionModal,
+  getInstallmentInfo,
+} from '@/features/transactions/presentation/components/EditTransactionModal';
 import { ManageCategoriesModal } from '@/features/categories/presentation/components/ManageCategoriesModal';
 import { getCategoryIconComponent, getCategoryColor } from '@/core/categories';
 import { filterTransactionsByPeriod, formatPeriodLabel } from '@/core/dateUtils';
+import Swal from 'sweetalert2';
 
 export const TransactionsPage: React.FC = () => {
   const {
@@ -89,9 +94,15 @@ export const TransactionsPage: React.FC = () => {
     }
 
     // Filtro de Tipo
-    if (selectedType === 'income' && t.type !== 'income' && t.amountCents < 0) return false;
-    if (selectedType === 'expense' && t.type !== 'expense' && (t.type === 'bill' || t.amountCents > 0)) return false;
-    if (selectedType === 'bill' && t.type !== 'bill') return false;
+    if (selectedType === 'income') {
+      if (t.type !== 'income' && t.amountCents <= 0) return false;
+    }
+    if (selectedType === 'expense') {
+      if (t.type !== 'expense' && t.type !== 'bill' && t.amountCents >= 0) return false;
+    }
+    if (selectedType === 'bill') {
+      if (t.type !== 'bill') return false;
+    }
 
     // Filtro de Status de Pagamento (Pago vs Pendente)
     if (selectedPaidStatus === 'paid' && t.isPaid !== true) return false;
@@ -125,16 +136,112 @@ export const TransactionsPage: React.FC = () => {
     }
   };
 
-  // Exclusão de movimentação
-  const handleDelete = async (transId: string, desc: string) => {
+  // Exclusão de movimentação com suporte a parcelas vinculadas e SweetAlert2
+  const handleDelete = async (trans: FinancialTransaction) => {
     if (!user?.familyId) return;
-    if (confirm(`Deseja remover a movimentação "${desc}"?`)) {
-      try {
-        await deleteTransactionFromFirestore(user.familyId, transId);
-        setTransactions(transactions.filter((t) => t.id !== transId));
-        showToast('Movimentação removida com sucesso.');
-      } catch (err) {
-        console.error('Erro ao deletar movimentação:', err);
+
+    const installmentInfo = getInstallmentInfo(trans, transactions);
+    const hasSisterInstallments = installmentInfo.isInstallment && installmentInfo.sisterTransactions.length > 1;
+
+    if (hasSisterInstallments) {
+      const result = await Swal.fire({
+        title: 'Excluir Movimentação Parcelada',
+        html: `
+          <div class="text-left text-sm text-navy space-y-2.5">
+            <p>A movimentação <b>"${trans.description}"</b> faz parte de uma série de <b>${installmentInfo.totalInstallments} parcelas</b>.</p>
+            <p class="text-muted text-xs">Como você deseja realizar a exclusão?</p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: `🗑️ Deletar todas as parcelas (${installmentInfo.sisterTransactions.length})`,
+        denyButtonText: `📄 Deletar somente esta (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments})`,
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#DC2626',
+        denyButtonColor: '#475569',
+        cancelButtonColor: '#94A3B8',
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: {
+          popup: 'rounded-3xl border border-navy/10 shadow-2xl p-6 font-sans',
+          confirmButton: 'rounded-xl text-xs font-bold py-2.5 px-3.5 shadow-sm',
+          denyButton: 'rounded-xl text-xs font-bold py-2.5 px-3.5 shadow-sm',
+          cancelButton: 'rounded-xl text-xs font-bold py-2.5 px-3.5',
+        },
+      });
+
+      if (result.isConfirmed) {
+        try {
+          const idsToDelete = installmentInfo.sisterTransactions.map((st) => st.id);
+          await deleteMultipleTransactionsFromFirestore(user.familyId, idsToDelete);
+          const idsSet = new Set(idsToDelete);
+          setTransactions(transactions.filter((t) => !idsSet.has(t.id)));
+          Swal.fire({
+            title: 'Excluído!',
+            text: `Todas as ${idsToDelete.length} parcelas vinculadas foram removidas com sucesso.`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-2xl font-sans' },
+          });
+        } catch (err) {
+          console.error('Erro ao deletar parcelas vinculadas:', err);
+          Swal.fire('Erro', 'Não foi possível remover as parcelas.', 'error');
+        }
+      } else if (result.isDenied) {
+        try {
+          await deleteTransactionFromFirestore(user.familyId, trans.id);
+          setTransactions(transactions.filter((t) => t.id !== trans.id));
+          Swal.fire({
+            title: 'Excluído!',
+            text: `A parcela (${installmentInfo.installmentNumber}/${installmentInfo.totalInstallments}) foi removida.`,
+            icon: 'success',
+            timer: 1800,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-2xl font-sans' },
+          });
+        } catch (err) {
+          console.error('Erro ao deletar parcela:', err);
+          Swal.fire('Erro', 'Não foi possível remover a movimentação.', 'error');
+        }
+      }
+    } else {
+      // Movimentação avulsa simples
+      const result = await Swal.fire({
+        title: 'Excluir Movimentação?',
+        html: `<p class="text-sm text-navy">Tem certeza que deseja remover <b>"${trans.description}"</b>?</p>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, excluir',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#DC2626',
+        cancelButtonColor: '#94A3B8',
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: {
+          popup: 'rounded-3xl border border-navy/10 shadow-2xl p-6 font-sans',
+          confirmButton: 'rounded-xl text-xs font-bold py-2.5 px-4 shadow-sm',
+          cancelButton: 'rounded-xl text-xs font-bold py-2.5 px-4',
+        },
+      });
+
+      if (result.isConfirmed) {
+        try {
+          await deleteTransactionFromFirestore(user.familyId, trans.id);
+          setTransactions(transactions.filter((t) => t.id !== trans.id));
+          Swal.fire({
+            title: 'Excluído!',
+            text: 'Movimentação removida com sucesso.',
+            icon: 'success',
+            timer: 1800,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-2xl font-sans' },
+          });
+        } catch (err) {
+          console.error('Erro ao deletar movimentação:', err);
+          Swal.fire('Erro', 'Não foi possível remover a movimentação.', 'error');
+        }
       }
     }
   };
@@ -485,7 +592,7 @@ export const TransactionsPage: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => handleDelete(t.id, t.description)}
+                        onClick={() => handleDelete(t)}
                         title="Excluir Movimentação"
                         className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10 transition"
                       >
@@ -548,7 +655,7 @@ export const TransactionsPage: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => handleDelete(t.id, t.description)}
+                        onClick={() => handleDelete(t)}
                         title="Excluir Movimentação"
                         className="opacity-0 group-hover:opacity-100 transition p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger/10"
                       >
