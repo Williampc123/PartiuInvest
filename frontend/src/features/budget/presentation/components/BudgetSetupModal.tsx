@@ -34,6 +34,7 @@ export interface BudgetAllocationFormItem {
   amountCents: number;
   amountStr: string;
   dueDay: number;
+  accountId?: string;
   color?: string;
   notes?: string;
 }
@@ -63,7 +64,7 @@ const parsePercentageInput = (valStr: string): number => {
 };
 
 export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onClose }) => {
-  const { user, familyMembers, categories, transactions, budgetConfig } = useAppStore();
+  const { user, familyMembers, accounts, categories, transactions, budgetConfig } = useAppStore();
 
   // 1. Receita total da família calculada a partir dos membros configurados
   const calculatedIncomeCents = useMemo(() => {
@@ -140,6 +141,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
         amountCents,
         amountStr: formatMoneyInput(amountCents),
         dueDay: p.day,
+        accountId: 'wallet',
         color: getCategoryColor(p.cat, categories),
       };
     });
@@ -169,6 +171,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
         amountCents: it.amountCents,
         amountStr: formatMoneyInput(it.amountCents),
         dueDay: it.dueDay || 10,
+        accountId: it.accountId || 'wallet',
         color: it.color || getCategoryColor(it.categoryName, categories),
         notes: it.notes,
       }));
@@ -294,6 +297,12 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
     );
   };
 
+  const handleAccountChange = (id: string, newAccountId: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, accountId: newAccountId } : item))
+    );
+  };
+
   const handleAddItem = () => {
     const defaultCat = expenseCategories[items.length % expenseCategories.length]?.name || 'Outros';
     const pct = 10;
@@ -306,6 +315,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
       amountCents,
       amountStr: amountCents > 0 ? formatMoneyInput(amountCents) : '',
       dueDay: 10,
+      accountId: accounts[0]?.id || 'wallet',
       color: getCategoryColor(defaultCat, categories),
       notes: '',
     };
@@ -351,6 +361,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
           percentage: Number(i.percentage) || 0,
           amountCents: Number(i.amountCents) || 0,
           dueDay: Number(i.dueDay) || 10,
+          accountId: i.accountId || 'wallet',
         };
         if (i.color) itemObj.color = i.color;
         if (i.notes) itemObj.notes = i.notes;
@@ -655,15 +666,34 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
                         </div>
                       </div>
 
-                      {/* Campo de Observação Opcional */}
-                      <div className="w-full pt-0.5">
-                        <input
-                          type="text"
-                          value={item.notes ?? ''}
-                          onChange={(e) => handleNotesChange(item.id, e.target.value)}
-                          placeholder="Observação (opcional, ex: Vivo Fibra, Carro, Seguro...)"
-                          className="w-full h-8 px-3 rounded-lg border border-navy/10 bg-navy/[0.02] text-xs font-medium text-navy placeholder:text-muted/60 focus:bg-white focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition"
-                        />
+                      {/* Linha 2: Dropdown de Conta de Saída e Campo de Observação */}
+                      <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-0.5">
+                        {/* Dropdown de Conta Bancária de Saída */}
+                        <div className="w-full sm:w-56 shrink-0 relative" title="Escolha de qual conta a despesa vai sair">
+                          <select
+                            value={item.accountId || 'wallet'}
+                            onChange={(e) => handleAccountChange(item.id, e.target.value)}
+                            className="w-full h-8 px-2.5 rounded-lg border border-navy/15 bg-white text-xs font-semibold text-navy focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none truncate"
+                          >
+                            <option value="wallet">💵 Dinheiro Livre / Carteira</option>
+                            {accounts.map((acc) => (
+                              <option key={acc.id} value={acc.id}>
+                                💳 {acc.name} ({Money.formatCents(acc.balanceCents)})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Campo de Observação Opcional */}
+                        <div className="flex-1 w-full">
+                          <input
+                            type="text"
+                            value={item.notes ?? ''}
+                            onChange={(e) => handleNotesChange(item.id, e.target.value)}
+                            placeholder="Observação (opcional, ex: Vivo Fibra, Carro, Seguro...)"
+                            className="w-full h-8 px-3 rounded-lg border border-navy/10 bg-navy/[0.02] text-xs font-medium text-navy placeholder:text-muted/60 focus:bg-white focus:border-gold focus:ring-1 focus:ring-gold focus:outline-none transition"
+                          />
+                        </div>
                       </div>
                     </div>
                   );

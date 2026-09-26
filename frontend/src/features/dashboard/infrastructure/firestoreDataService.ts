@@ -10,8 +10,8 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/infrastructure/firebase/firebase';
-import { FamilyMember, BoxGoal, BankAccount, FinancialTransaction, FinancialCategory } from '@/core/types';
-import { DEFAULT_CATEGORIES } from '@/core/categories';
+import { FamilyMember, BoxGoal, BankAccount, FinancialTransaction, FinancialCategory, BoxCategory } from '@/core/types';
+import { DEFAULT_CATEGORIES, DEFAULT_BOX_CATEGORIES } from '@/core/categories';
 import { FamilyBudgetConfig } from '@/features/budget/infrastructure/budgetService';
 
 export interface FamilyDataState {
@@ -20,6 +20,7 @@ export interface FamilyDataState {
   budgetConfig?: FamilyBudgetConfig | null;
   members: FamilyMember[];
   boxes: BoxGoal[];
+  boxCategories: BoxCategory[];
   accounts: BankAccount[];
   transactions: FinancialTransaction[];
   categories: FinancialCategory[];
@@ -167,6 +168,22 @@ export async function updateBankAccountInFirestore(
 }
 
 /**
+ * Utilitário de sanitização para evitar erro de campos undefined no Firestore
+ */
+function cleanFirestoreObject<T extends Record<string, any>>(obj: T): T {
+  const clean: any = Array.isArray(obj) ? [] : {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
+    if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+      clean[key] = cleanFirestoreObject(value);
+    } else {
+      clean[key] = value;
+    }
+  }
+  return clean;
+}
+
+/**
  * Adiciona uma nova caixinha/meta ao Firestore
  */
 export async function addBoxToFirestore(
@@ -181,30 +198,52 @@ export async function addBoxToFirestore(
     id: newDocRef.id,
   };
 
-  const batch = writeBatch(db);
-  batch.set(newDocRef, {
+  const payload = cleanFirestoreObject({
     ...box,
     createdAt: new Date().toISOString(),
   });
 
-  // Se houver saldo inicial vindo de uma conta bancária, debitar da conta e registrar transação
-  if (boxData.currentBalanceCents > 0 && initialDeposit?.accountId && initialDeposit.accountId !== 'wallet') {
-    const accDocRef = doc(db, `families/${familyId}/accounts`, initialDeposit.accountId);
-    // Registrar transação de aporte
-    const transRef = doc(collection(db, `families/${familyId}/transactions`));
-    batch.set(transRef, {
-      id: transRef.id,
-      accountId: initialDeposit.accountId,
-      memberId: initialDeposit.memberId || boxData.ownerMemberId,
+  const batch = writeBatch(db);
+  batch.set(newDocRef, payload);
+
+  // Se houver saldo inicial com valor > 0
+  if (boxData.currentBalanceCents > 0) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nowIso = new Date().toISOString();
+
+    // 1. Se a origem for conta bancária, debitar da conta e registrar saída da conta
+    if (initialDeposit?.accountId && initialDeposit.accountId !== 'wallet') {
+      const transRefDebit = doc(collection(db, `families/${familyId}/transactions`));
+      batch.set(transRefDebit, cleanFirestoreObject({
+        id: transRefDebit.id,
+        accountId: initialDeposit.accountId,
+        memberId: initialDeposit.memberId || boxData.ownerMemberId,
+        visibility: boxData.visibility,
+        description: `Retirada da Conta para Caixinha: ${boxData.name}`,
+        amountCents: -Math.abs(boxData.currentBalanceCents),
+        category: 'Investimentos / Caixinhas',
+        date: todayStr,
+        type: 'expense',
+        source: 'manual',
+        createdAt: nowIso,
+      }));
+    }
+
+    // 2. Registrar aporte / entrada na caixinha
+    const transRefCredit = doc(collection(db, `families/${familyId}/transactions`));
+    batch.set(transRefCredit, cleanFirestoreObject({
+      id: transRefCredit.id,
+      accountId: 'wallet',
+      memberId: initialDeposit?.memberId || boxData.ownerMemberId,
       visibility: boxData.visibility,
-      description: `Aporte Inicial Caixinha: ${boxData.name}`,
-      amountCents: -Math.abs(boxData.currentBalanceCents),
+      description: `Aporte Inicial na Caixinha: ${boxData.name}`,
+      amountCents: Math.abs(boxData.currentBalanceCents),
       category: 'Investimentos / Caixinhas',
-      date: new Date().toISOString().split('T')[0],
-      type: 'expense',
+      date: todayStr,
+      type: 'income',
       source: 'manual',
-      createdAt: new Date().toISOString(),
-    });
+      createdAt: nowIso,
+    }));
   }
 
   await batch.commit();
@@ -239,10 +278,11 @@ export async function updateBoxInFirestore(
   updates: Partial<BoxGoal>
 ): Promise<void> {
   const boxDocRef = doc(db, `families/${familyId}/boxes`, boxId);
-  await updateDoc(boxDocRef, {
+  const payload = cleanFirestoreObject({
     ...updates,
     updatedAt: new Date().toISOString(),
   });
+  await updateDoc(boxDocRef, payload);
 }
 
 /**
@@ -259,7 +299,7 @@ export interface AccountDepositSource {
 }
 
 /**
- * Aporta / Guarda dinheiro na caixinha com opção de debitar de uma ou mais contas bancárias
+ * Aporta / Guarda dinheiro na caixinha gerando retirada da conta e aporte na caixinha
  */
 export async function depositToBoxInFirestore(
   familyId: string,
@@ -284,32 +324,54 @@ export async function depositToBoxInFirestore(
     ? [{ accountId: sources, amountCents: totalAmountCents }]
     : sources;
 
-  const validSources = sourceList.filter(s => s.amountCents > 0 && s.accountId !== 'wallet');
+  const validSources = sourceList.filter(s => s.amountCents > 0);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const nowIso = new Date().toISOString();
 
   for (const src of validSources) {
-    const transRef = doc(collection(db, `families/${familyId}/transactions`));
-    batch.set(transRef, {
-      id: transRef.id,
-      accountId: src.accountId,
+    // 1. Se veio de conta bancária, registrar a retirada / saída da conta
+    if (src.accountId !== 'wallet') {
+      const transRefDebit = doc(collection(db, `families/${familyId}/transactions`));
+      batch.set(transRefDebit, cleanFirestoreObject({
+        id: transRefDebit.id,
+        accountId: src.accountId,
+        memberId: memberId || 'user',
+        visibility: 'family',
+        description: `Retirada da Conta para Caixinha: ${boxName || 'Meta Financeira'}`,
+        amountCents: -Math.abs(src.amountCents),
+        category: 'Investimentos / Caixinhas',
+        date: todayStr,
+        type: 'expense',
+        source: 'manual',
+        createdAt: nowIso,
+      }));
+    }
+
+    // 2. Registrar o aporte / entrada na caixinha
+    const transRefCredit = doc(collection(db, `families/${familyId}/transactions`));
+    batch.set(transRefCredit, cleanFirestoreObject({
+      id: transRefCredit.id,
+      accountId: 'wallet',
       memberId: memberId || 'user',
       visibility: 'family',
-      description: `Aporte Caixinha: ${boxName || 'Meta Financeira'}`,
-      amountCents: -Math.abs(src.amountCents),
+      description: `Aporte na Caixinha: ${boxName || 'Meta Financeira'}`,
+      amountCents: Math.abs(src.amountCents),
       category: 'Investimentos / Caixinhas',
-      date: new Date().toISOString().split('T')[0],
-      type: 'expense',
+      date: todayStr,
+      type: 'income',
       source: 'manual',
-      createdAt: new Date().toISOString(),
-    });
+      createdAt: nowIso,
+    }));
   }
 
   await batch.commit();
 
   // Atualizar saldos das contas bancárias debitadas
-  if (validSources.length > 0) {
+  const bankSources = validSources.filter(s => s.accountId !== 'wallet');
+  if (bankSources.length > 0) {
     try {
       const accSnap = await getDocs(collection(db, `families/${familyId}/accounts`));
-      for (const src of validSources) {
+      for (const src of bankSources) {
         const targetAcc = accSnap.docs.find(d => d.id === src.accountId);
         if (targetAcc) {
           const currentBal = targetAcc.data().balanceCents || 0;
@@ -327,7 +389,7 @@ export async function depositToBoxInFirestore(
 }
 
 /**
- * Resgata dinheiro da caixinha com opção de creditar em conta bancária
+ * Resgata dinheiro da caixinha com opção de creditar em conta bancária (saída da caixinha + entrada na conta)
  */
 export async function withdrawFromBoxInFirestore(
   familyId: string,
@@ -347,22 +409,41 @@ export async function withdrawFromBoxInFirestore(
     updatedAt: new Date().toISOString(),
   });
 
-  // Se o destino for conta bancária cadastrada, creditar na conta e registrar receita
+  const todayStr = new Date().toISOString().split('T')[0];
+  const nowIso = new Date().toISOString();
+
+  // 1. Saída / Resgate da Caixinha
+  const transRefDebit = doc(collection(db, `families/${familyId}/transactions`));
+  batch.set(transRefDebit, cleanFirestoreObject({
+    id: transRefDebit.id,
+    accountId: 'wallet',
+    memberId: memberId || 'user',
+    visibility: 'family',
+    description: `Resgate da Caixinha: ${boxName || 'Meta Financeira'}`,
+    amountCents: -Math.abs(amountCents),
+    category: 'Investimentos / Caixinhas',
+    date: todayStr,
+    type: 'expense',
+    source: 'manual',
+    createdAt: nowIso,
+  }));
+
+  // 2. Se o destino for conta bancária cadastrada, creditar na conta e registrar entrada na conta
   if (toAccountId && toAccountId !== 'wallet') {
-    const transRef = doc(collection(db, `families/${familyId}/transactions`));
-    batch.set(transRef, {
-      id: transRef.id,
+    const transRefCredit = doc(collection(db, `families/${familyId}/transactions`));
+    batch.set(transRefCredit, cleanFirestoreObject({
+      id: transRefCredit.id,
       accountId: toAccountId,
       memberId: memberId || 'user',
       visibility: 'family',
-      description: `Resgate Caixinha: ${boxName || 'Meta Financeira'}`,
+      description: `Entrada via Resgate da Caixinha: ${boxName || 'Meta Financeira'}`,
       amountCents: Math.abs(amountCents),
       category: 'Investimentos / Rendimentos',
-      date: new Date().toISOString().split('T')[0],
+      date: todayStr,
       type: 'income',
       source: 'manual',
-      createdAt: new Date().toISOString(),
-    });
+      createdAt: nowIso,
+    }));
   }
 
   await batch.commit();
@@ -487,6 +568,78 @@ export async function deleteCategoryFromFirestore(familyId: string, categoryId: 
 }
 
 /**
+ * Inicializa categorias padrão de caixinhas se vazio
+ */
+export async function seedDefaultBoxCategoriesIfEmpty(familyId: string) {
+  try {
+    const boxCatRef = collection(db, `families/${familyId}/box_categories`);
+    const snap = await getDocs(boxCatRef);
+
+    if (snap.empty) {
+      const batch = writeBatch(db);
+      DEFAULT_BOX_CATEGORIES.forEach((cat) => {
+        const catDocRef = doc(boxCatRef, cat.id);
+        batch.set(catDocRef, {
+          id: cat.id,
+          name: cat.name,
+          label: cat.label,
+          icon: cat.icon,
+          color: cat.color,
+          defaultName: cat.defaultName || cat.label,
+          isCustom: false,
+          createdAt: new Date().toISOString(),
+        });
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn('Erro ao verificar/semear categorias padrão de caixinhas:', err);
+  }
+}
+
+/**
+ * Adiciona nova categoria de caixinha no Firestore
+ */
+export async function addBoxCategoryToFirestore(
+  familyId: string,
+  categoryData: Omit<BoxCategory, 'id'>
+): Promise<BoxCategory> {
+  const catRef = collection(db, `families/${familyId}/box_categories`);
+  const newDocRef = doc(catRef);
+  const category: BoxCategory = {
+    ...categoryData,
+    id: newDocRef.id,
+    isCustom: true,
+  };
+
+  await setDoc(newDocRef, {
+    ...category,
+    createdAt: new Date().toISOString(),
+  });
+  return category;
+}
+
+/**
+ * Atualiza categoria de caixinha no Firestore
+ */
+export async function updateBoxCategoryInFirestore(
+  familyId: string,
+  categoryId: string,
+  updates: Partial<BoxCategory>
+): Promise<void> {
+  const catDocRef = doc(db, `families/${familyId}/box_categories`, categoryId);
+  await updateDoc(catDocRef, updates);
+}
+
+/**
+ * Exclui categoria de caixinha do Firestore
+ */
+export async function deleteBoxCategoryFromFirestore(familyId: string, categoryId: string): Promise<void> {
+  const catDocRef = doc(db, `families/${familyId}/box_categories`, categoryId);
+  await deleteDoc(catDocRef);
+}
+
+/**
  * Escuta em tempo real todas as subcoleções do Firestore para a família
  */
 export function subscribeFamilyData(
@@ -499,6 +652,7 @@ export function subscribeFamilyData(
     familyName: 'Minha Família',
     members: [],
     boxes: [],
+    boxCategories: DEFAULT_BOX_CATEGORIES,
     accounts: [],
     transactions: [],
     categories: DEFAULT_CATEGORIES,
@@ -568,6 +722,19 @@ export function subscribeFamilyData(
       notify();
     });
     unsubs.push(unsubCategories);
+
+    // 7. Escutar Categorias de Caixinhas do Firestore
+    const boxCategoriesRef = collection(db, `families/${familyId}/box_categories`);
+    const unsubBoxCategories = onSnapshot(boxCategoriesRef, (snap) => {
+      if (snap.empty) {
+        seedDefaultBoxCategoriesIfEmpty(familyId);
+        state.boxCategories = DEFAULT_BOX_CATEGORIES;
+      } else {
+        state.boxCategories = snap.docs.map((d) => d.data() as BoxCategory);
+      }
+      notify();
+    });
+    unsubs.push(unsubBoxCategories);
   } catch (err) {
     console.error('Erro ao subscrever dados do Firestore:', err);
   }

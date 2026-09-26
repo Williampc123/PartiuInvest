@@ -8,6 +8,7 @@ export interface BudgetAllocationItem {
   percentage: number;
   amountCents: number;
   dueDay: number;
+  accountId?: string;
   color?: string;
   notes?: string;
 }
@@ -56,6 +57,7 @@ export async function saveBudgetConfig(
       amountCents: Number(i.amountCents) || 0,
       dueDay: Number(i.dueDay) || 10,
     };
+    if (i.accountId) itemObj.accountId = i.accountId;
     if (i.color) itemObj.color = i.color;
     if (i.notes?.trim()) itemObj.notes = i.notes.trim();
     return sanitizeForFirestore(itemObj);
@@ -188,6 +190,7 @@ export async function generateProvisionedBudgetExpenses(
           date: dateStr,
           category: item.categoryName,
           description,
+          accountId: item.accountId || existing.accountId || 'wallet',
           updatedAt: new Date().toISOString(),
         };
 
@@ -207,7 +210,7 @@ export async function generateProvisionedBudgetExpenses(
         // Não existe ainda: cria nova despesa orçada
         const newTransaction: Record<string, any> = {
           id: transactionId,
-          accountId: 'wallet',
+          accountId: item.accountId || 'wallet',
           memberId: 'family',
           visibility: 'family',
           description,

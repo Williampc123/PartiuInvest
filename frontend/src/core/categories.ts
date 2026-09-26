@@ -35,7 +35,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
-import { FinancialCategory } from './types';
+import { FinancialCategory, BoxCategory } from './types';
 
 /**
  * Catálogo de ícones disponíveis para seleção pelo usuário
@@ -158,6 +158,57 @@ export const DEFAULT_CATEGORIES: FinancialCategory[] = [
   { id: 'cat_cashback', name: 'Cashback / Bonificações', type: 'income', icon: 'Sparkles', color: '#E11D48', isCustom: true },
   { id: 'cat_outros_receita', name: 'Outros', type: 'income', icon: 'Package', color: '#64748B', isCustom: true },
 ];
+ 
+/**
+ * Categorias Padrão para Caixinhas / Metas Financeiras
+ */
+export const DEFAULT_BOX_CATEGORIES: BoxCategory[] = [
+  {
+    id: 'emergency',
+    name: 'emergency',
+    label: 'Reserva de Emergência',
+    icon: 'ShieldCheck',
+    color: '#F5B82E',
+    defaultName: 'Reserva de Emergência',
+    isCustom: false,
+  },
+  {
+    id: 'opportunity',
+    name: 'opportunity',
+    label: 'Reserva de Oportunidade',
+    icon: 'Zap',
+    color: '#F97316',
+    defaultName: 'Reserva de Oportunidade',
+    isCustom: false,
+  },
+  {
+    id: 'dream',
+    name: 'dream',
+    label: 'Sonho / Viagem / Bem',
+    icon: 'Plane',
+    color: '#3F6FD8',
+    defaultName: 'Viagem dos Sonhos',
+    isCustom: false,
+  },
+  {
+    id: 'investment',
+    name: 'investment',
+    label: 'Investimentos & Futuro',
+    icon: 'TrendingUp',
+    color: '#0A1F44',
+    defaultName: 'Fundo de Liberdade Financeira',
+    isCustom: false,
+  },
+  {
+    id: 'education',
+    name: 'education',
+    label: 'Educação / Capacitação',
+    icon: 'GraduationCap',
+    color: '#22C55E',
+    defaultName: 'Faculdade / Especialização',
+    isCustom: false,
+  },
+];
 
 /**
  * Retorna o ícone correspondente à categoria (por objeto ou por nome)
@@ -170,7 +221,15 @@ export function getCategoryIconComponent(iconNameOrCategoryName?: string): Lucid
     return ICON_MAP[iconNameOrCategoryName];
   }
 
-  // 2. Tentar casar com categoria padrão por nome
+  // 2. Tentar casar com categoria de caixinha por id ou nome
+  const boxCat = DEFAULT_BOX_CATEGORIES.find(
+    (b) => b.id.toLowerCase() === iconNameOrCategoryName.toLowerCase() || b.name.toLowerCase() === iconNameOrCategoryName.toLowerCase() || b.label.toLowerCase() === iconNameOrCategoryName.toLowerCase()
+  );
+  if (boxCat && ICON_MAP[boxCat.icon]) {
+    return ICON_MAP[boxCat.icon];
+  }
+
+  // 3. Tentar casar com categoria padrão de transações por nome
   const defaultCat = DEFAULT_CATEGORIES.find(
     (c) => c.name.toLowerCase() === iconNameOrCategoryName.toLowerCase()
   );
@@ -180,14 +239,16 @@ export function getCategoryIconComponent(iconNameOrCategoryName?: string): Lucid
 
   // Fallback baseado em palavras-chave comuns
   const lower = iconNameOrCategoryName.toLowerCase();
+  if (lower.includes('emergenc') || lower.includes('seguranca') || lower.includes('reserva')) return ShieldCheck;
+  if (lower.includes('oportunidade') || lower.includes('agro') || lower.includes('rapido') || lower.includes('oferta')) return Zap;
   if (lower.includes('comida') || lower.includes('alimento') || lower.includes('mercado') || lower.includes('restaurante')) return Utensils;
-  if (lower.includes('casa') || lower.includes('aluguel') || lower.includes('moradia') || lower.includes('condom')) return Home;
-  if (lower.includes('carro') || lower.includes('uber') || lower.includes('transporte') || lower.includes('combustivel')) return Car;
+  if (lower.includes('casa') || lower.includes('aluguel') || lower.includes('moradia') || lower.includes('condom') || lower.includes('reforma')) return Home;
+  if (lower.includes('carro') || lower.includes('uber') || lower.includes('transporte') || lower.includes('combustivel') || lower.includes('veiculo')) return Car;
   if (lower.includes('saude') || lower.includes('farmacia') || lower.includes('medico') || lower.includes('hospital')) return HeartPulse;
-  if (lower.includes('estudo') || lower.includes('curso') || lower.includes('faculdade') || lower.includes('educacao')) return GraduationCap;
+  if (lower.includes('estudo') || lower.includes('curso') || lower.includes('faculdade') || lower.includes('educacao') || lower.includes('escola')) return GraduationCap;
   if (lower.includes('salario') || lower.includes('trabalho') || lower.includes('remuneracao')) return Briefcase;
-  if (lower.includes('invest') || lower.includes('rendimento') || lower.includes('dividendo')) return TrendingUp;
-  if (lower.includes('lazer') || lower.includes('cinema') || lower.includes('viagem') || lower.includes('show')) return Film;
+  if (lower.includes('invest') || lower.includes('rendimento') || lower.includes('dividendo') || lower.includes('futuro')) return TrendingUp;
+  if (lower.includes('lazer') || lower.includes('cinema') || lower.includes('viagem') || lower.includes('show') || lower.includes('ferias')) return Plane;
   if (lower.includes('pet') || lower.includes('cachorro') || lower.includes('gato')) return PawPrint;
   if (lower.includes('conta') || lower.includes('boleto') || lower.includes('luz') || lower.includes('agua')) return Receipt;
 
@@ -199,6 +260,11 @@ export function getCategoryIconComponent(iconNameOrCategoryName?: string): Lucid
  */
 export function getCategoryColor(categoryName?: string, categories: FinancialCategory[] = DEFAULT_CATEGORIES): string {
   if (!categoryName) return '#64748B';
+
+  const boxCat = DEFAULT_BOX_CATEGORIES.find(
+    (b) => b.id.toLowerCase() === categoryName.toLowerCase() || b.name.toLowerCase() === categoryName.toLowerCase() || b.label.toLowerCase() === categoryName.toLowerCase()
+  );
+  if (boxCat?.color) return boxCat.color;
 
   const found = categories.find((c) => c.name.toLowerCase() === categoryName.toLowerCase());
   if (found?.color) return found.color;

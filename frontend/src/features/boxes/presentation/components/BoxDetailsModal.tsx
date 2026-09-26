@@ -1,23 +1,18 @@
 import React from 'react';
 import {
   X,
-  Target,
-  ShieldCheck,
-  Plane,
-  GraduationCap,
-  TrendingUp,
   Calendar,
   User,
   PlusCircle,
   ArrowDownCircle,
   Pencil,
   Trash2,
-  CheckCircle2,
 } from 'lucide-react';
 import { BoxGoal, FamilyMember } from '@/core/types';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { Money } from '@/core/Money';
 import { deleteBoxFromFirestore } from '@/features/dashboard/infrastructure/firestoreDataService';
+import { getCategoryIconComponent } from '@/core/categories';
 
 interface BoxDetailsModalProps {
   isOpen: boolean;
@@ -51,16 +46,8 @@ export const BoxDetailsModal: React.FC<BoxDetailsModalProps> = ({
   const owner = familyMembers.find((m: FamilyMember) => m.id === box.ownerMemberId);
 
   const renderIcon = () => {
-    switch (box.category) {
-      case 'emergency':
-        return <ShieldCheck className="h-6 w-6 text-gold-deep" />;
-      case 'dream':
-        return <Plane className="h-6 w-6 text-blue" />;
-      case 'education':
-        return <GraduationCap className="h-6 w-6 text-ok" />;
-      default:
-        return <TrendingUp className="h-6 w-6 text-navy" />;
-    }
+    const IconComp = getCategoryIconComponent(box.icon || box.category);
+    return <IconComp className="h-6 w-6" style={{ color: box.color || undefined }} />;
   };
 
   const handleDelete = async () => {

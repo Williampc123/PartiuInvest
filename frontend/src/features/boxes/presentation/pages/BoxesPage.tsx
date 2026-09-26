@@ -9,17 +9,14 @@ import {
   Target,
   Plus,
   Sparkles,
-  TrendingUp,
-  ShieldCheck,
-  Plane,
-  GraduationCap,
   Wallet,
 } from 'lucide-react';
 import { Money } from '@/core/Money';
 import { BoxGoal } from '@/core/types';
+import { getCategoryIconComponent } from '@/core/categories';
 
 export const BoxesPage: React.FC = () => {
-  const { boxes, selectedMemberId } = useAppStore();
+  const { boxes, boxCategories, selectedMemberId } = useAppStore();
 
   // Estados dos Modais
   const [isNewBoxModalOpen, setIsNewBoxModalOpen] = useState(false);
@@ -50,10 +47,11 @@ export const BoxesPage: React.FC = () => {
   const globalProgress =
     totalTargetCents > 0 ? Math.min(100, Math.round((totalSavedCents / totalTargetCents) * 100)) : 0;
 
-  const emergencyBoxes = filteredBoxes.filter((b) => b.category === 'emergency');
-  const dreamBoxes = filteredBoxes.filter((b) => b.category === 'dream');
-  const investmentBoxes = filteredBoxes.filter((b) => b.category === 'investment');
-  const educationBoxes = filteredBoxes.filter((b) => b.category === 'education');
+  const categoryCounts = filteredBoxes.reduce((acc: Record<string, number>, b: BoxGoal) => {
+    const catKey = b.category || 'emergency';
+    acc[catKey] = (acc[catKey] || 0) + 1;
+    return acc;
+  }, {});
 
   const handleOpenEdit = (box: BoxGoal) => {
     setEditingBox(box);
@@ -132,16 +130,32 @@ export const BoxesPage: React.FC = () => {
 
         <div className="card !p-4 bg-gradient-to-br from-white/90 to-white/60">
           <small className="text-xs text-muted block">Categorias Ativas</small>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="pill bg-gold/15 text-gold-deep text-[10px] font-semibold">
-              🛡️ {emergencyBoxes.length} Reserva
-            </span>
-            <span className="pill bg-blue/15 text-blue text-[10px] font-semibold">
-              ✈️ {dreamBoxes.length} Sonhos
-            </span>
-            <span className="pill bg-navy/10 text-navy text-[10px] font-semibold">
-              📈 {investmentBoxes.length + educationBoxes.length} Futuro
-            </span>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {Object.keys(categoryCounts).length === 0 ? (
+              <span className="text-xs text-muted">Nenhuma caixinha ativa</span>
+            ) : (
+              Object.entries(categoryCounts).slice(0, 4).map(([catId, count]) => {
+                const found = boxCategories.find((c) => c.id === catId || c.name === catId);
+                const label = found?.label || found?.name || catId;
+                const IconComponent = getCategoryIconComponent(found?.icon || catId);
+                const pillColor = found?.color || '#3F6FD8';
+                return (
+                  <span
+                    key={catId}
+                    className="pill text-[10px] font-semibold flex items-center gap-1"
+                    style={{
+                      backgroundColor: `${pillColor}15`,
+                      color: pillColor,
+                    }}
+                  >
+                    <IconComponent className="h-3 w-3" />
+                    <span>
+                      {count} {label.split('/')[0].trim()}
+                    </span>
+                  </span>
+                );
+              })
+            )}
           </div>
           <span className="text-[11px] text-muted mt-1.5 block">
             Foco equilibrado entre segurança e projetos

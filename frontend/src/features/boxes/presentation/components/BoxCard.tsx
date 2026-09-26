@@ -1,7 +1,8 @@
 import React from 'react';
 import { BoxGoal } from '@/core/types';
 import { Money } from '@/core/Money';
-import { ShieldCheck, Plane, GraduationCap, Target, PlusCircle, ArrowDownCircle } from 'lucide-react';
+import { PlusCircle, ArrowDownCircle } from 'lucide-react';
+import { getCategoryIconComponent } from '@/core/categories';
 
 interface BoxCardProps {
   box: BoxGoal;
@@ -22,16 +23,8 @@ export const BoxCard: React.FC<BoxCardProps> = ({
   );
 
   const renderIcon = () => {
-    switch (box.category) {
-      case 'emergency':
-        return <ShieldCheck className="h-5 w-5 text-gold-deep" />;
-      case 'dream':
-        return <Plane className="h-5 w-5 text-blue" />;
-      case 'education':
-        return <GraduationCap className="h-5 w-5 text-ok" />;
-      default:
-        return <Target className="h-5 w-5 text-navy" />;
-    }
+    const IconComp = getCategoryIconComponent(box.icon || box.category);
+    return <IconComp className="h-5 w-5" style={{ color: box.color || undefined }} />;
   };
 
   return (

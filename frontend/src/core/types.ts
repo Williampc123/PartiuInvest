@@ -44,12 +44,22 @@ export interface BankAccount {
   lastSyncedAt?: string;
 }
 
+export interface BoxCategory {
+  id: string;
+  name: string;
+  label: string;
+  icon: string;
+  color: string;
+  defaultName?: string;
+  isCustom?: boolean;
+}
+
 export interface BoxGoal {
   id: string;
   ownerMemberId: string;
   visibility: 'family' | 'private';
   name: string;
-  category: 'emergency' | 'dream' | 'investment' | 'education';
+  category: string;
   targetAmountCents: number;
   currentBalanceCents: number;
   targetDate?: string;

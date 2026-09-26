@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { UserProfile, FamilyMember, BankAccount, BoxGoal, FinancialTransaction, FinancialCategory } from '../../core/types';
-import { DEFAULT_CATEGORIES } from '../../core/categories';
+import { UserProfile, FamilyMember, BankAccount, BoxGoal, FinancialTransaction, FinancialCategory, BoxCategory } from '../../core/types';
+import { DEFAULT_CATEGORIES, DEFAULT_BOX_CATEGORIES } from '../../core/categories';
 import { FamilyBudgetConfig } from '../budget/infrastructure/budgetService';
 
 interface AppState {
@@ -10,6 +10,7 @@ interface AppState {
   selectedMemberId: string | 'all'; // 'all' para visão consolidada da família
   accounts: BankAccount[];
   boxes: BoxGoal[];
+  boxCategories: BoxCategory[];
   transactions: FinancialTransaction[];
   categories: FinancialCategory[];
   budgetConfig: FamilyBudgetConfig | null;
@@ -47,6 +48,9 @@ interface AppState {
   setAccounts: (accounts: BankAccount[]) => void;
   addAccount: (account: BankAccount) => void;
   setBoxes: (boxes: BoxGoal[]) => void;
+  setBoxCategories: (boxCategories: BoxCategory[]) => void;
+  addBoxCategory: (boxCategory: BoxCategory) => void;
+  removeBoxCategory: (id: string) => void;
   setTransactions: (transactions: FinancialTransaction[]) => void;
   updateTransaction: (transaction: FinancialTransaction) => void;
   updateMultipleTransactions: (updatedList: FinancialTransaction[]) => void;
@@ -59,6 +63,7 @@ interface AppState {
     familyName?: string;
     members?: FamilyMember[];
     boxes?: BoxGoal[];
+    boxCategories?: BoxCategory[];
     accounts?: BankAccount[];
     transactions?: FinancialTransaction[];
     categories?: FinancialCategory[];
@@ -105,6 +110,7 @@ export const useAppStore = create<AppState>((set) => {
     },
     accounts: [],
     boxes: [],
+    boxCategories: DEFAULT_BOX_CATEGORIES,
     transactions: [],
     categories: DEFAULT_CATEGORIES,
     initialSetupDone: false,
@@ -181,6 +187,15 @@ export const useAppStore = create<AppState>((set) => {
         accounts: [...state.accounts.filter((a) => a.id !== account.id), account],
       })),
     setBoxes: (boxes) => set({ boxes }),
+    setBoxCategories: (boxCategories) => set({ boxCategories }),
+    addBoxCategory: (boxCategory) =>
+      set((state) => ({
+        boxCategories: [...state.boxCategories.filter((c) => c.id !== boxCategory.id), boxCategory],
+      })),
+    removeBoxCategory: (id) =>
+      set((state) => ({
+        boxCategories: state.boxCategories.filter((c) => c.id !== id),
+      })),
     setTransactions: (transactions) => set({ transactions }),
     updateTransaction: (transaction) =>
       set((state) => ({
@@ -210,6 +225,7 @@ export const useAppStore = create<AppState>((set) => {
         familyName: data.familyName !== undefined ? data.familyName : state.familyName,
         familyMembers: data.members !== undefined ? data.members : state.familyMembers,
         boxes: data.boxes !== undefined ? data.boxes : state.boxes,
+        boxCategories: data.boxCategories !== undefined ? data.boxCategories : state.boxCategories,
         accounts: data.accounts !== undefined ? data.accounts : state.accounts,
         transactions: data.transactions !== undefined ? data.transactions : state.transactions,
         categories: data.categories !== undefined ? data.categories : state.categories,
