@@ -39,6 +39,56 @@ export const DashboardPage: React.FC = () => {
     visible: false,
   });
 
+  const [barTooltipData, setBarTooltipData] = useState<{
+    month: string;
+    rec: number;
+    desp: number;
+    hoveredType?: 'rec' | 'desp';
+    x: number;
+    y: number;
+    visible: boolean;
+  }>({
+    month: '',
+    rec: 0,
+    desp: 0,
+    x: 0,
+    y: 0,
+    visible: false,
+  });
+
+  const [donutTooltipData, setDonutTooltipData] = useState<{
+    category: string;
+    value: number;
+    percent: number;
+    color: string;
+    x: number;
+    y: number;
+    visible: boolean;
+  }>({
+    category: '',
+    value: 0,
+    percent: 0,
+    color: '',
+    x: 0,
+    y: 0,
+    visible: false,
+  });
+
+  const monthFullNames: Record<string, string> = {
+    Abr: 'Abril',
+    Mai: 'Maio',
+    Jun: 'Junho',
+    Jul: 'Julho',
+    Ago: 'Agosto',
+    Set: 'Setembro',
+    Out: 'Outubro',
+    Nov: 'Novembro',
+    Dez: 'Dezembro',
+    Jan: 'Janeiro',
+    Fev: 'Fevereiro',
+    Mar: 'Março',
+  };
+
   // ==========================================
   // FILTRAGEM DINÂMICA POR MEMBRO / CONSOLIDADO
   // ==========================================
@@ -743,25 +793,116 @@ export const DashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <svg viewBox={`0 0 ${barW} ${barH}`} role="img" aria-label="Receitas e despesas dos últimos 6 meses" className="h-auto w-full">
-                {barMonths.map((m, i) => {
-                  const gx = barPl + i * barGw + (barGw - barBw * 2 - 4) / 2;
-                  const recH = (barRec[i] / barMax) * (barH - barPb - barPt);
-                  const despH = (barDesp[i] / barMax) * (barH - barPb - barPt);
-                  const recY = barH - barPb - recH;
-                  const despY = barH - barPb - despH;
+              <div
+                className="relative mt-2"
+                onMouseLeave={() => setBarTooltipData((prev) => ({ ...prev, visible: false }))}
+              >
+                <svg viewBox={`0 0 ${barW} ${barH}`} role="img" aria-label="Receitas e despesas dos últimos 6 meses" className="h-auto w-full overflow-visible">
+                  {barMonths.map((m, i) => {
+                    const gx = barPl + i * barGw + (barGw - barBw * 2 - 4) / 2;
+                    const recH = (barRec[i] / barMax) * (barH - barPb - barPt);
+                    const despH = (barDesp[i] / barMax) * (barH - barPb - barPt);
+                    const recY = barH - barPb - recH;
+                    const despY = barH - barPb - despH;
+                    const monthFull = monthFullNames[m] || m;
 
-                  return (
-                    <g key={m}>
-                      <rect x={gx} y={recY} width={barBw} height={recH} rx={4} fill="#3F6FD8" />
-                      <rect x={gx + barBw + 4} y={despY} width={barBw} height={despH} rx={4} fill="#F5B82E" />
-                      <text x={gx + barBw + 2} y={barH - 8} textAnchor="middle" fontSize="11" fill="#5B6885" fontFamily="Outfit,sans-serif">
-                        {m}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
+                    return (
+                      <g
+                        key={m}
+                        className="cursor-pointer"
+                        onMouseMove={(e) => {
+                          const rect = e.currentTarget.closest('.relative')?.getBoundingClientRect();
+                          if (rect) {
+                            setBarTooltipData({
+                              month: monthFull,
+                              rec: barRec[i],
+                              desp: barDesp[i],
+                              x: e.clientX - rect.left,
+                              y: Math.max(20, Math.min(e.clientY - rect.top, ((Math.min(recY, despY)) / barH) * rect.height)),
+                              visible: true,
+                            });
+                          }
+                        }}
+                      >
+                        {/* Área invisível de captura para facilitar o hover na coluna do mês */}
+                        <rect
+                          x={gx - 4}
+                          y={barPt}
+                          width={barBw * 2 + 12}
+                          height={barH - barPb - barPt + 20}
+                          fill="transparent"
+                        />
+                        <rect
+                          x={gx}
+                          y={recY}
+                          width={barBw}
+                          height={recH}
+                          rx={4}
+                          fill="#3F6FD8"
+                          className="transition-all hover:brightness-110"
+                          onMouseEnter={() => setBarTooltipData((prev) => ({ ...prev, hoveredType: 'rec' }))}
+                        />
+                        <rect
+                          x={gx + barBw + 4}
+                          y={despY}
+                          width={barBw}
+                          height={despH}
+                          rx={4}
+                          fill="#F5B82E"
+                          className="transition-all hover:brightness-110"
+                          onMouseEnter={() => setBarTooltipData((prev) => ({ ...prev, hoveredType: 'desp' }))}
+                        />
+                        <text
+                          x={gx + barBw + 2}
+                          y={barH - 8}
+                          textAnchor="middle"
+                          fontSize="11"
+                          fill="#5B6885"
+                          fontFamily="Outfit,sans-serif"
+                        >
+                          {m}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Tooltip Flutuante para Gráfico de Barras */}
+                {barTooltipData.visible && (
+                  <div
+                    style={{ left: `${barTooltipData.x}px`, top: `${barTooltipData.y}px` }}
+                    className="pointer-events-none absolute -translate-x-1/2 -translate-y-[115%] z-20 whitespace-nowrap rounded-xl bg-navy px-3 py-2 text-[.8rem] text-white shadow-[0_12px_24px_-10px_rgba(10,31,68,.7)] transition-opacity"
+                  >
+                    <div className="text-[11px] font-semibold text-[#C3CCE0] border-b border-white/10 pb-1 mb-1.5 flex items-center justify-between gap-3">
+                      <span>{barTooltipData.month}</span>
+                      <span className="text-[10px] text-white/60">Histórico</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className={`flex items-center justify-between gap-4 text-xs ${barTooltipData.hoveredType === 'rec' ? 'font-bold' : ''}`}>
+                        <span className="flex items-center gap-1.5 text-[#A5C0FF]">
+                          <span className="inline-block h-2 w-2 rounded-[2px] bg-[#3F6FD8]" />
+                          Receitas:
+                        </span>
+                        <b className="text-white">{brl(barTooltipData.rec)}</b>
+                      </div>
+                      <div className={`flex items-center justify-between gap-4 text-xs ${barTooltipData.hoveredType === 'desp' ? 'font-bold' : ''}`}>
+                        <span className="flex items-center gap-1.5 text-[#FFD580]">
+                          <span className="inline-block h-2 w-2 rounded-[2px] bg-[#F5B82E]" />
+                          Despesas:
+                        </span>
+                        <b className="text-white">{brl(barTooltipData.desp)}</b>
+                      </div>
+                      <div className="border-t border-white/10 pt-1 mt-0.5 flex items-center justify-between gap-4 text-[11px]">
+                        <span className="text-white/70">Saldo:</span>
+                        <b className={barTooltipData.rec >= barTooltipData.desp ? 'text-ok' : 'text-danger'}>
+                          {brl(barTooltipData.rec - barTooltipData.desp)}
+                        </b>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="mt-2 flex flex-wrap gap-4 text-[.82rem] text-muted">
                 <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] bg-[#3F6FD8] align-[-1px]" />Receitas</span>
                 <span><i className="mr-1.5 inline-block h-2.5 w-2.5 rounded-[3px] bg-gold align-[-1px]" />Despesas</span>
@@ -779,7 +920,13 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className="grid justify-items-center gap-4">
-                <div className="relative h-[150px] w-[150px]">
+                <div
+                  className="relative h-[150px] w-[150px]"
+                  onMouseLeave={() => {
+                    setHoveredCatIndex(null);
+                    setDonutTooltipData((prev) => ({ ...prev, visible: false }));
+                  }}
+                >
                   <svg viewBox="0 0 160 160" role="img" aria-label="Despesas por categoria" className="h-full w-full -rotate-90">
                     {categoriesEntries.map((c, i) => {
                       let offset = 0;
@@ -787,6 +934,7 @@ export const DashboardPage: React.FC = () => {
                         offset += (categoriesEntries[j][1] / totalExpensesNumber) * donutC;
                       }
                       const dash = (c[1] / totalExpensesNumber) * donutC;
+                      const pct = (c[1] / totalExpensesNumber) * 100;
                       return (
                         <circle
                           key={c[0]}
@@ -798,27 +946,80 @@ export const DashboardPage: React.FC = () => {
                           strokeWidth={hoveredCatIndex === i ? '24' : '18'}
                           strokeDasharray={`${dash} ${donutC - dash}`}
                           strokeDashoffset={-offset}
-                          className="transition-all cursor-pointer"
+                          className="transition-all cursor-pointer hover:opacity-90"
                           onMouseEnter={() => setHoveredCatIndex(i)}
-                          onMouseLeave={() => setHoveredCatIndex(null)}
+                          onMouseMove={(e) => {
+                            const rect = e.currentTarget.closest('.relative')?.getBoundingClientRect();
+                            if (rect) {
+                              setHoveredCatIndex(i);
+                              setDonutTooltipData({
+                                category: c[0],
+                                value: c[1],
+                                percent: pct,
+                                color: c[2],
+                                x: e.clientX - rect.left,
+                                y: e.clientY - rect.top,
+                                visible: true,
+                              });
+                            }
+                          }}
                         />
                       );
                     })}
                   </svg>
-                  <div className="absolute inset-0 grid place-content-center text-center pointer-events-none">
-                    <b className="text-[1.1rem] font-extrabold leading-[1.1]">{totalExpensesFormatted}</b>
-                    <small className="text-[.72rem] text-muted">em despesas</small>
+                  <div className="absolute inset-0 grid place-content-center text-center pointer-events-none px-2">
+                    {hoveredCatIndex !== null && categoriesEntries[hoveredCatIndex] ? (
+                      <>
+                        <b className="text-[1.05rem] font-extrabold leading-[1.1] transition-all" style={{ color: categoriesEntries[hoveredCatIndex][2] }}>
+                          {brl(categoriesEntries[hoveredCatIndex][1])}
+                        </b>
+                        <small className="text-[.72rem] font-semibold text-navy truncate max-w-[100px]">
+                          {categoriesEntries[hoveredCatIndex][0]}
+                        </small>
+                      </>
+                    ) : (
+                      <>
+                        <b className="text-[1.1rem] font-extrabold leading-[1.1]">{totalExpensesFormatted}</b>
+                        <small className="text-[.72rem] text-muted">em despesas</small>
+                      </>
+                    )}
                   </div>
+
+                  {/* Tooltip Flutuante para Gráfico Donut */}
+                  {donutTooltipData.visible && (
+                    <div
+                      style={{ left: `${donutTooltipData.x}px`, top: `${donutTooltipData.y}px` }}
+                      className="pointer-events-none absolute -translate-x-1/2 -translate-y-[120%] z-30 whitespace-nowrap rounded-xl bg-navy px-3 py-2 text-[.8rem] text-white shadow-[0_12px_24px_-10px_rgba(10,31,68,.7)] transition-opacity"
+                    >
+                      <div className="flex items-center gap-1.5 font-semibold text-white mb-0.5">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: donutTooltipData.color }} />
+                        <span>{donutTooltipData.category}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <b className="text-white">{brl(donutTooltipData.value)}</b>
+                        <span className="text-[11px] font-medium text-[#C3CCE0]">
+                          ({donutTooltipData.percent.toFixed(1)}%)
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <ul className="m-0 grid w-full list-none grid-cols-2 gap-x-4 gap-y-1.5 p-0">
-                  {categoriesEntries.map((c) => (
-                    <li key={c[0]} className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1.5">
-                        <i className="h-2 w-2 rounded-full" style={{ backgroundColor: c[2] }} />
-                        <span className="text-muted">{c[0]}</span>
+                  {categoriesEntries.map((c, idx) => (
+                    <li
+                      key={c[0]}
+                      className={`flex items-center justify-between text-xs p-1 rounded-lg transition-colors cursor-pointer ${
+                        hoveredCatIndex === idx ? 'bg-navy/[0.06] font-semibold' : 'hover:bg-navy/[0.03]'
+                      }`}
+                      onMouseEnter={() => setHoveredCatIndex(idx)}
+                      onMouseLeave={() => setHoveredCatIndex(null)}
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <i className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: c[2] }} />
+                        <span className="truncate text-muted">{c[0]}</span>
                       </span>
-                      <b className="font-semibold">R$ {c[1].toFixed(0)}</b>
+                      <b className="font-semibold ml-1 whitespace-nowrap">R$ {c[1].toFixed(0)}</b>
                     </li>
                   ))}
                 </ul>
