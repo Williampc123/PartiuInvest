@@ -75,12 +75,15 @@ export async function generateProvisionedSalaries(
         type: 'income',
         isRecurring: true,
         recurrenceFrequency: 'mensal',
-        installmentNumber: monthsCount > 1 ? k + 1 : undefined,
-        totalInstallments: monthsCount > 1 ? monthsCount : undefined,
         isPaid: false,
         source: 'manual',
         createdAt: new Date().toISOString(),
       };
+
+      if (monthsCount > 1) {
+        newTransaction.installmentNumber = k + 1;
+        newTransaction.totalInstallments = monthsCount;
+      }
 
       batch.set(transRef, newTransaction, { merge: true });
       batchCount++;

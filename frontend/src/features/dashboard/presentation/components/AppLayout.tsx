@@ -6,6 +6,7 @@ import { Header } from './Header';
 import { NewTransactionModal } from './NewTransactionModal';
 import { InitialSetupModal } from '@/features/family/presentation/components/InitialSetupModal';
 import { BudgetSetupModal } from '@/features/budget/presentation/components/BudgetSetupModal';
+import { InvestmentsFullScreenModal } from '@/features/investments/presentation/components/InvestmentsFullScreenModal';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { checkAndGenerateMonthlySalaries } from '@/features/family/infrastructure/salaryService';
 import {
@@ -25,6 +26,8 @@ export const AppLayout: React.FC = () => {
     setIsInitialSetupOpen,
     isBudgetSetupOpen,
     setIsBudgetSetupOpen,
+    isInvestmentsOpen,
+    setIsInvestmentsOpen,
     setAllFamilyData,
   } = useAppStore();
 
@@ -88,6 +91,7 @@ export const AppLayout: React.FC = () => {
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
           onOpenOpenFinance={() => setIsOpenFinanceOpen(true)}
+          onOpenInvestments={() => setIsInvestmentsOpen(true)}
         />
 
         {/* Área de Conteúdo */}
@@ -104,6 +108,11 @@ export const AppLayout: React.FC = () => {
       </div>
 
       {/* Modais Globais */}
+      <InvestmentsFullScreenModal
+        isOpen={isInvestmentsOpen}
+        onClose={() => setIsInvestmentsOpen(false)}
+      />
+
       <InitialSetupModal
         isOpen={isInitialSetupOpen}
         onClose={() => setIsInitialSetupOpen(false)}

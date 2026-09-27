@@ -25,6 +25,7 @@ interface AppState {
   initialSetupDone: boolean;
   isInitialSetupOpen: boolean;
   isBudgetSetupOpen: boolean;
+  isInvestmentsOpen: boolean;
   isDataLoaded: boolean;
   isOffline: boolean;
   setUser: (user: UserProfile | null) => void;
@@ -35,6 +36,7 @@ interface AppState {
   setInitialSetupDone: (done: boolean) => void;
   setIsInitialSetupOpen: (open: boolean) => void;
   setIsBudgetSetupOpen: (open: boolean) => void;
+  setIsInvestmentsOpen: (open: boolean) => void;
   setPeriodFilter: (filter: {
     type: 'month' | 'custom' | 'all';
     yearMonth?: string;
@@ -116,6 +118,7 @@ export const useAppStore = create<AppState>((set) => {
     initialSetupDone: false,
     isInitialSetupOpen: false,
     isBudgetSetupOpen: false,
+    isInvestmentsOpen: false,
     isDataLoaded: false,
     isOffline: !navigator.onLine,
 
@@ -126,6 +129,7 @@ export const useAppStore = create<AppState>((set) => {
     setInitialSetupDone: (initialSetupDone) => set({ initialSetupDone }),
     setIsInitialSetupOpen: (isInitialSetupOpen) => set({ isInitialSetupOpen }),
     setIsBudgetSetupOpen: (isBudgetSetupOpen) => set({ isBudgetSetupOpen }),
+    setIsInvestmentsOpen: (isInvestmentsOpen) => set({ isInvestmentsOpen }),
     setSelectedYearMonth: (selectedYearMonth) =>
       set({
         selectedYearMonth,
