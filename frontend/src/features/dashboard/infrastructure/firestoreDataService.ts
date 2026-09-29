@@ -168,6 +168,145 @@ export async function updateBankAccountInFirestore(
 }
 
 /**
+ * Transfere saldo entre duas contas bancárias e registra as movimentações correspondentes
+ */
+export async function transferBetweenAccountsInFirestore(
+  familyId: string,
+  fromAccountId: string,
+  toAccountId: string,
+  amountCents: number,
+  description?: string,
+  date?: string,
+  memberId?: string
+): Promise<void> {
+  const batch = writeBatch(db);
+  const nowIso = new Date().toISOString();
+  const todayStr = date || nowIso.split('T')[0];
+
+  const accountsSnap = await getDocs(collection(db, `families/${familyId}/accounts`));
+  const fromAccDoc = accountsSnap.docs.find((d) => d.id === fromAccountId);
+  const toAccDoc = accountsSnap.docs.find((d) => d.id === toAccountId);
+
+  const fromAccName = fromAccDoc?.data()?.name || 'Conta de Origem';
+  const toAccName = toAccDoc?.data()?.name || 'Conta de Destino';
+  const effectiveMemberId = memberId || fromAccDoc?.data()?.ownerMemberId || 'head';
+
+  // 1. Débito da Conta de Origem
+  const transDebitRef = doc(collection(db, `families/${familyId}/transactions`));
+  batch.set(
+    transDebitRef,
+    cleanFirestoreObject({
+      id: transDebitRef.id,
+      accountId: fromAccountId,
+      memberId: effectiveMemberId,
+      visibility: 'family',
+      description: description || `Transferência para ${toAccName}`,
+      amountCents: -Math.abs(amountCents),
+      category: 'Transferência',
+      date: todayStr,
+      type: 'expense',
+      isPaid: true,
+      source: 'manual',
+      createdAt: nowIso,
+    })
+  );
+
+  // 2. Crédito na Conta de Destino
+  const transCreditRef = doc(collection(db, `families/${familyId}/transactions`));
+  batch.set(
+    transCreditRef,
+    cleanFirestoreObject({
+      id: transCreditRef.id,
+      accountId: toAccountId,
+      memberId: effectiveMemberId,
+      visibility: 'family',
+      description: description
+        ? `${description} (Recebimento)`
+        : `Transferência recebida de ${fromAccName}`,
+      amountCents: Math.abs(amountCents),
+      category: 'Transferência',
+      date: todayStr,
+      type: 'income',
+      isPaid: true,
+      source: 'manual',
+      createdAt: nowIso,
+    })
+  );
+
+  // 3. Atualizar Saldos das Contas
+  if (fromAccDoc) {
+    const fromBal = fromAccDoc.data().balanceCents || 0;
+    const fromDocRef = doc(db, `families/${familyId}/accounts`, fromAccountId);
+    batch.update(fromDocRef, {
+      balanceCents: Math.max(0, fromBal - amountCents),
+      lastSyncedAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    });
+  }
+
+  if (toAccDoc) {
+    const toBal = toAccDoc.data().balanceCents || 0;
+    const toDocRef = doc(db, `families/${familyId}/accounts`, toAccountId);
+    batch.update(toDocRef, {
+      balanceCents: toBal + amountCents,
+      lastSyncedAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    });
+  }
+
+  await batch.commit();
+}
+
+/**
+ * Ajusta o saldo de uma conta bancária para um valor avulso específico
+ * Opcionalmente cria uma movimentação de ajuste no histórico
+ */
+export async function adjustAccountBalanceInFirestore(
+  familyId: string,
+  accountId: string,
+  newBalanceCents: number,
+  createTransactionEntry: boolean = true,
+  memberId: string = 'head',
+  note?: string
+): Promise<void> {
+  const accountDocRef = doc(db, `families/${familyId}/accounts`, accountId);
+  const accSnap = await getDocs(collection(db, `families/${familyId}/accounts`));
+  const targetAcc = accSnap.docs.find((d) => d.id === accountId);
+  const oldBalanceCents = targetAcc?.data()?.balanceCents || 0;
+  const diffCents = newBalanceCents - oldBalanceCents;
+  const accName = targetAcc?.data()?.name || 'Conta Bancária';
+
+  const batch = writeBatch(db);
+
+  batch.update(accountDocRef, {
+    balanceCents: newBalanceCents,
+    lastSyncedAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+  });
+
+  if (createTransactionEntry && diffCents !== 0) {
+    const transRef = doc(collection(db, `families/${familyId}/transactions`));
+    const isIncrease = diffCents > 0;
+    batch.set(
+      transRef,
+      cleanFirestoreObject({
+        id: transRef.id,
+        accountId,
+        memberId,
+        visibility: 'family',
+        description: note || `Ajuste de Saldo - ${accName}`,
+        amountCents: diffCents,
+        category: isIncrease ? 'Investimentos / Rendimentos' : 'Ajuste de Saldo',
+        date: new Date().toISOString().split('T')[0],
+        type: isIncrease ? 'income' : 'expense',
+        isPaid: true,
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+      })
+    );
+  }
+
+  await batch.commit();
+}
+
+/**
  * Utilitário de sanitização para evitar erro de campos undefined no Firestore
  */
 function cleanFirestoreObject<T extends Record<string, any>>(obj: T): T {

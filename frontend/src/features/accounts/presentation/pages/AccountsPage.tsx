@@ -20,11 +20,14 @@ import {
   updateBankAccountInFirestore,
 } from '@/features/dashboard/infrastructure/firestoreDataService';
 import { NewAccountModal } from '@/features/accounts/presentation/components/NewAccountModal';
+import { AdjustAccountBalanceModal } from '@/features/accounts/presentation/components/AdjustAccountBalanceModal';
+import { Pencil } from 'lucide-react';
 
 export const AccountsPage: React.FC = () => {
   const { accounts, familyMembers, selectedMemberId, user, setAccounts } = useAppStore();
   // const [isOpenFinanceOpen, setIsOpenFinanceOpen] = useState(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [adjustingAccount, setAdjustingAccount] = useState<BankAccount | null>(null);
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -303,27 +306,31 @@ export const AccountsPage: React.FC = () => {
                     <span>{isSyncingThis ? 'Sincronizando...' : 'Sincronizar'}</span>
                   </button>
 
-                  {/* Open Finance desativado temporariamente
-                  {acc.source === 'open_finance' ? (
-                    <span className="flex items-center gap-1 text-[11px] text-ok font-bold">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Conectado
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setIsOpenFinanceOpen(true)}
-                      className="link text-[11px] font-bold text-gold-deep"
-                    >
-                      Conectar Open Finance
-                    </button>
-                  )}
-                  */}
+                  <button
+                    type="button"
+                    onClick={() => setAdjustingAccount(acc)}
+                    className="btn-gold text-[11px] h-8 px-2.5 gap-1 font-bold shadow-xs"
+                    title="Ajustar ou adicionar valor avulso nesta conta"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    <span>Ajustar Saldo</span>
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Modal de Ajuste de Saldo da Conta */}
+      <AdjustAccountBalanceModal
+        isOpen={Boolean(adjustingAccount)}
+        account={adjustingAccount}
+        onClose={() => setAdjustingAccount(null)}
+        onSuccess={(newBal) => {
+          showToast(`Saldo da conta "${adjustingAccount?.name}" atualizado com sucesso!`);
+        }}
+      />
 
       {/* Box de Segurança Open Finance desativado temporariamente
       <div className="rounded-2xl bg-navy/5 border border-navy/10 p-4 flex items-start gap-3 text-xs text-muted">

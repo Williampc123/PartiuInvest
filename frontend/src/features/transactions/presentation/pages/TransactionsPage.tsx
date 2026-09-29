@@ -23,6 +23,7 @@ import {
   deleteTransactionFromFirestore,
   deleteMultipleTransactionsFromFirestore,
   updateTransactionInFirestore,
+  updateBankAccountInFirestore,
 } from '@/features/dashboard/infrastructure/firestoreDataService';
 import { NewTransactionModal } from '@/features/dashboard/presentation/components/NewTransactionModal';
 import {
@@ -130,6 +131,21 @@ export const TransactionsPage: React.FC = () => {
     try {
       await updateTransactionInFirestore(user.familyId, t.id, { isPaid: newPaid });
       updateTransaction({ ...t, isPaid: newPaid });
+
+      // Atualizar saldo da conta bancária vinculada se aplicável
+      if (t.accountId && t.accountId !== 'wallet') {
+        try {
+          const targetAcc = accounts.find((a) => a.id === t.accountId);
+          if (targetAcc) {
+            const delta = newPaid ? t.amountCents : -t.amountCents;
+            const newBal = Math.max(0, targetAcc.balanceCents + delta);
+            await updateBankAccountInFirestore(user.familyId, t.accountId, { balanceCents: newBal });
+          }
+        } catch (accErr) {
+          console.warn('Erro ao atualizar saldo da conta bancária no toggle:', accErr);
+        }
+      }
+
       showToast(newPaid ? 'Movimentação marcada como Paga/Recebida!' : 'Movimentação desmarcada (Pendente).');
     } catch (err) {
       console.error('Erro ao alternar status de pagamento:', err);
