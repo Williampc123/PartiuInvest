@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { familyRoutes } from './modules/families/routes.js';
+import { investmentsRoutes } from './modules/investments/routes.js';
 // import { openFinanceRoutes } from './modules/open-finance/routes.js';
 
 const app = express();
@@ -42,6 +43,7 @@ app.get('/health', (_req, res) => {
 // Rotas Versionadas
 app.use('/v1/auth', authRoutes);
 app.use('/v1/families', familyRoutes);
+app.use('/v1/investments', investmentsRoutes);
 // app.use('/v1/open-finance', openFinanceRoutes);
 
 // Iniciar Servidor

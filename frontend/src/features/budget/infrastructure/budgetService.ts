@@ -11,6 +11,7 @@ export interface BudgetAllocationItem {
   accountId?: string;
   color?: string;
   notes?: string;
+  skippedMonths?: string[];
 }
 
 export interface FamilyBudgetConfig {
@@ -60,6 +61,9 @@ export async function saveBudgetConfig(
     if (i.accountId) itemObj.accountId = i.accountId;
     if (i.color) itemObj.color = i.color;
     if (i.notes?.trim()) itemObj.notes = i.notes.trim();
+    if (Array.isArray(i.skippedMonths) && i.skippedMonths.length > 0) {
+      itemObj.skippedMonths = i.skippedMonths;
+    }
     return sanitizeForFirestore(itemObj);
   });
 
@@ -80,15 +84,29 @@ export async function saveBudgetConfig(
  * - Remove parcelas em aberto de categorias que foram excluídas do orçamento.
  * - Cria novas parcelas para meses futuros no período.
  */
+export interface ProvisionResult {
+  totalProcessed: number;
+  updatedTransactions: FinancialTransaction[];
+}
+
+/**
+ * Provisiona e sincroniza as despesas do orçamento ao longo do período selecionado.
+ * - Formata a descrição diretamente com o nome da categoria
+ * - Atualiza automaticamente parcelas em aberto (isPaid: false) com os novos valores/regras.
+ * - Preserva o histórico de parcelas já quitadas (isPaid: true).
+ * - Remove parcelas em aberto de categorias que foram excluídas do orçamento.
+ * - Cria novas parcelas para meses futuros no período (padrão: 12 meses).
+ */
 export async function generateProvisionedBudgetExpenses(
   familyId: string,
   items: BudgetAllocationItem[],
   existingTransactions: FinancialTransaction[],
-  monthsCount: number = 1,
-  startDate: Date = new Date()
-): Promise<number> {
+  monthsCount: number = 12,
+  startDate: Date = new Date(),
+  creatorMemberId?: string
+): Promise<ProvisionResult> {
   if (!familyId || monthsCount <= 0) {
-    return 0;
+    return { totalProcessed: 0, updatedTransactions: existingTransactions || [] };
   }
 
   const startYear = startDate.getFullYear();
@@ -112,6 +130,10 @@ export async function generateProvisionedBudgetExpenses(
     }
   };
 
+  // Cópia mutável para atualização imediata em memória
+  const deletedIds = new Set<string>();
+  const upsertedTransactionsMap = new Map<string, FinancialTransaction>();
+
   // 1. Remover parcelas em aberto de categorias que foram removidas do orçamento
   for (const t of existingTransactions) {
     const isBudgetTransaction =
@@ -131,6 +153,7 @@ export async function generateProvisionedBudgetExpenses(
         const transRef = doc(db, `families/${familyId}/transactions`, t.id);
         currentBatch.delete(transRef);
         batchCount++;
+        deletedIds.add(t.id);
         await commitBatchIfNeeded();
       }
     }
@@ -166,24 +189,45 @@ export async function generateProvisionedBudgetExpenses(
         const isBudget =
           t.id.startsWith('bud_') ||
           desc.startsWith('orçamento:') ||
-          desc.includes('orçamento:') ||
-          desc.startsWith(item.categoryName.toLowerCase());
+          desc.includes('orçamento:');
         const isSameMonth = t.date && t.date.startsWith(yearMonth);
         return isCat && isBudget && isSameMonth;
       });
 
       const targetAmountCents = -Math.abs(item.amountCents);
-      const installmentSuffix = monthsCount > 1 ? ` (${k + 1}/${monthsCount})` : '';
-      // Descrição limpa com apenas o nome da categoria e as parcelas
-      const description = `${item.categoryName}${installmentSuffix}`;
+      const description = item.categoryName;
+
+      // Se este mês foi suspenso/pulado para esta categoria do orçamento
+      if (item.skippedMonths && item.skippedMonths.includes(yearMonth)) {
+        if (existing && !existing.isPaid) {
+          const existingRef = doc(db, `families/${familyId}/transactions`, existing.id);
+          currentBatch.delete(existingRef);
+          batchCount++;
+          deletedIds.add(existing.id);
+          await commitBatchIfNeeded();
+        }
+        continue;
+      }
 
       if (existing) {
         // Se a parcela já foi paga, preserva o histórico sem alterar
         if (existing.isPaid) {
+          upsertedTransactionsMap.set(existing.id, existing);
           continue;
         }
 
-        // Se a parcela ainda está em aberto, atualiza para refletir a nova separação
+        const isAmountSame = existing.amountCents === targetAmountCents;
+        const isDateSame = existing.date === dateStr;
+        const isAccountSame = !item.accountId || existing.accountId === item.accountId;
+        const isDescSame = existing.description === description;
+        const isNotesSame = (item.notes?.trim() || '') === (existing.notes?.trim() || '');
+
+        if (isAmountSame && isDateSame && isAccountSame && isDescSame && isNotesSame) {
+          upsertedTransactionsMap.set(existing.id, existing);
+          continue;
+        }
+
+        // Se a parcela ainda está em aberto e mudou, atualiza para refletir a nova separação
         const existingRef = doc(db, `families/${familyId}/transactions`, existing.id);
         const updatePayload: Record<string, any> = {
           amountCents: targetAmountCents,
@@ -198,20 +242,20 @@ export async function generateProvisionedBudgetExpenses(
           updatePayload.notes = item.notes.trim();
         }
 
-        if (monthsCount > 1) {
-          updatePayload.installmentNumber = k + 1;
-          updatePayload.totalInstallments = monthsCount;
-        }
-
         currentBatch.set(existingRef, sanitizeForFirestore(updatePayload), { merge: true });
         batchCount++;
         totalProcessed++;
+
+        upsertedTransactionsMap.set(existing.id, {
+          ...existing,
+          ...updatePayload,
+        } as FinancialTransaction);
       } else {
         // Não existe ainda: cria nova despesa orçada
-        const newTransaction: Record<string, any> = {
+        const newTransaction: FinancialTransaction = {
           id: transactionId,
           accountId: item.accountId || 'wallet',
-          memberId: 'family',
+          memberId: creatorMemberId || 'family',
           visibility: 'family',
           description,
           amountCents: targetAmountCents,
@@ -229,14 +273,11 @@ export async function generateProvisionedBudgetExpenses(
           newTransaction.notes = item.notes.trim();
         }
 
-        if (monthsCount > 1) {
-          newTransaction.installmentNumber = k + 1;
-          newTransaction.totalInstallments = monthsCount;
-        }
-
         currentBatch.set(transRef, sanitizeForFirestore(newTransaction), { merge: true });
         batchCount++;
         totalProcessed++;
+
+        upsertedTransactionsMap.set(transactionId, newTransaction);
       }
 
       await commitBatchIfNeeded();
@@ -247,9 +288,117 @@ export async function generateProvisionedBudgetExpenses(
     try {
       await currentBatch.commit();
     } catch (err) {
-      console.error('Erro ao processar lote de despesas orçadas:', err);
+      console.error('Erro ao processar lote de despesas orçadas no Firestore:', err);
+      throw err;
     }
   }
 
-  return totalProcessed;
+  // Monta lista atualizada em memória combinando o estado anterior com exclusões e upserts
+  const updatedTransactions = existingTransactions
+    .filter((t) => !deletedIds.has(t.id))
+    .map((t) => (upsertedTransactionsMap.has(t.id) ? upsertedTransactionsMap.get(t.id)! : t));
+
+  // Adiciona transações novas que não existiam em existingTransactions
+  for (const [id, trans] of upsertedTransactionsMap.entries()) {
+    if (!updatedTransactions.some((t) => t.id === id)) {
+      updatedTransactions.push(trans);
+    }
+  }
+
+  return { totalProcessed, updatedTransactions };
 }
+
+/**
+ * Garante que as despesas do orçamento estejam sempre provisionadas para os próximos 12 meses
+ */
+export async function checkAndGenerateMonthlyBudgetExpenses(
+  familyId: string,
+  items: BudgetAllocationItem[],
+  existingTransactions: FinancialTransaction[],
+  targetDate: Date = new Date(),
+  creatorMemberId?: string
+): Promise<ProvisionResult> {
+  return generateProvisionedBudgetExpenses(familyId, items, existingTransactions, 12, targetDate, creatorMemberId);
+}
+
+/**
+ * Suspende a previsão de uma categoria de orçamento em um mês específico (ex: '2026-12').
+ * Atualiza o budgetConfig da família no Firestore e retorna a configuração atualizada.
+ */
+export async function skipBudgetCategoryMonth(
+  familyId: string,
+  categoryName: string,
+  yearMonth: string,
+  currentConfig: FamilyBudgetConfig | null
+): Promise<FamilyBudgetConfig | null> {
+  if (!familyId || !categoryName || !yearMonth || !currentConfig) return currentConfig;
+
+  const catTarget = categoryName.trim().toLowerCase();
+  let changed = false;
+
+  const newItems: BudgetAllocationItem[] = (currentConfig.items || []).map((it) => {
+    if (it.categoryName.trim().toLowerCase() === catTarget) {
+      const currentSkipped = Array.isArray(it.skippedMonths) ? it.skippedMonths : [];
+      if (!currentSkipped.includes(yearMonth)) {
+        changed = true;
+        return {
+          ...it,
+          skippedMonths: [...currentSkipped, yearMonth],
+        };
+      }
+    }
+    return it;
+  });
+
+  if (!changed) return currentConfig;
+
+  const updatedConfig: FamilyBudgetConfig = {
+    ...currentConfig,
+    items: newItems,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await saveBudgetConfig(familyId, updatedConfig.totalIncomeCents, updatedConfig.items);
+  return updatedConfig;
+}
+
+/**
+ * Reativa a previsão de uma categoria de orçamento que havia sido suspensa em um mês específico.
+ */
+export async function unskipBudgetCategoryMonth(
+  familyId: string,
+  categoryName: string,
+  yearMonth: string,
+  currentConfig: FamilyBudgetConfig | null
+): Promise<FamilyBudgetConfig | null> {
+  if (!familyId || !categoryName || !yearMonth || !currentConfig) return currentConfig;
+
+  const catTarget = categoryName.trim().toLowerCase();
+  let changed = false;
+
+  const newItems: BudgetAllocationItem[] = (currentConfig.items || []).map((it) => {
+    if (it.categoryName.trim().toLowerCase() === catTarget) {
+      const currentSkipped = Array.isArray(it.skippedMonths) ? it.skippedMonths : [];
+      if (currentSkipped.includes(yearMonth)) {
+        changed = true;
+        return {
+          ...it,
+          skippedMonths: currentSkipped.filter((m) => m !== yearMonth),
+        };
+      }
+    }
+    return it;
+  });
+
+  if (!changed) return currentConfig;
+
+  const updatedConfig: FamilyBudgetConfig = {
+    ...currentConfig,
+    items: newItems,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await saveBudgetConfig(familyId, updatedConfig.totalIncomeCents, updatedConfig.items);
+  return updatedConfig;
+}
+

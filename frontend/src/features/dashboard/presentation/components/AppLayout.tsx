@@ -6,8 +6,10 @@ import { Header } from './Header';
 import { NewTransactionModal } from './NewTransactionModal';
 import { InitialSetupModal } from '@/features/family/presentation/components/InitialSetupModal';
 import { BudgetSetupModal } from '@/features/budget/presentation/components/BudgetSetupModal';
+import { InvestmentsFullScreenModal } from '@/features/investments/presentation/components/InvestmentsFullScreenModal';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { checkAndGenerateMonthlySalaries } from '@/features/family/infrastructure/salaryService';
+import { checkAndGenerateMonthlyBudgetExpenses } from '@/features/budget/infrastructure/budgetService';
 import {
   subscribeFamilyData,
   seedInitialFamilyDataIfEmpty,
@@ -20,11 +22,14 @@ export const AppLayout: React.FC = () => {
     user,
     familyMembers,
     transactions,
+    budgetConfig,
     initialSetupDone,
     isInitialSetupOpen,
     setIsInitialSetupOpen,
     isBudgetSetupOpen,
     setIsBudgetSetupOpen,
+    isInvestmentsOpen,
+    setIsInvestmentsOpen,
     setAllFamilyData,
   } = useAppStore();
 
@@ -68,12 +73,24 @@ export const AppLayout: React.FC = () => {
     }
   }, [user?.familyId, initialSetupDone, setIsInitialSetupOpen]);
 
-  // Virada de Mês / Verificação Automática de Salários
+  // Virada de Mês / Verificação Automática de Salários e Despesas do Orçamento
   useEffect(() => {
-    if (!user?.familyId || !familyMembers || familyMembers.length === 0) return;
+    if (!user?.familyId) return;
 
-    checkAndGenerateMonthlySalaries(user.familyId, familyMembers, transactions);
-  }, [user?.familyId, familyMembers, transactions]);
+    if (familyMembers && familyMembers.length > 0) {
+      checkAndGenerateMonthlySalaries(user.familyId, familyMembers, transactions);
+    }
+
+    if (budgetConfig?.items && budgetConfig.items.length > 0) {
+      checkAndGenerateMonthlyBudgetExpenses(
+        user.familyId,
+        budgetConfig.items,
+        transactions,
+        new Date(),
+        user.memberId
+      );
+    }
+  }, [user?.familyId, familyMembers, budgetConfig, transactions]);
 
   if (!user) {
     return null;
@@ -88,6 +105,7 @@ export const AppLayout: React.FC = () => {
           isOpen={isMobileMenuOpen}
           onClose={() => setIsMobileMenuOpen(false)}
           onOpenOpenFinance={() => setIsOpenFinanceOpen(true)}
+          onOpenInvestments={() => setIsInvestmentsOpen(true)}
         />
 
         {/* Área de Conteúdo */}
@@ -104,6 +122,11 @@ export const AppLayout: React.FC = () => {
       </div>
 
       {/* Modais Globais */}
+      <InvestmentsFullScreenModal
+        isOpen={isInvestmentsOpen}
+        onClose={() => setIsInvestmentsOpen(false)}
+      />
+
       <InitialSetupModal
         isOpen={isInitialSetupOpen}
         onClose={() => setIsInitialSetupOpen(false)}

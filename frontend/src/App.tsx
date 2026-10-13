@@ -9,6 +9,7 @@ import { AccountsPage } from './features/accounts/presentation/pages/AccountsPag
 import { TransactionsPage } from './features/transactions/presentation/pages/TransactionsPage';
 import { CategoriesPage } from './features/categories/presentation/pages/CategoriesPage';
 import { LearningPage } from './features/learning/presentation/pages/LearningPage';
+import { InvestmentsPage } from './features/investments/presentation/pages/InvestmentsPage';
 import { useAppStore } from './features/auth/useAppStore';
 
 export const App: React.FC = () => {
@@ -41,7 +42,9 @@ export const App: React.FC = () => {
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/family" element={<FamilyMembersPage />} />
           <Route path="/learning" element={<LearningPage />} />
+          <Route path="/investments" element={<InvestmentsPage />} />
           {/* Redirecionamento amigável */}
+          <Route path="/investimentos" element={<Navigate to="/investments" replace />} />
           <Route path="/movimentacoes" element={<Navigate to="/transactions" replace />} />
           <Route path="/categorias" element={<Navigate to="/categories" replace />} />
           <Route path="/contas" element={<Navigate to="/accounts" replace />} />

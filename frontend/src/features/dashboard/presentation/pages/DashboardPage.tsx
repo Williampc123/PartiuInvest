@@ -9,6 +9,7 @@ import {
   formatYearMonth,
   formatPeriodLabel,
 } from '@/core/dateUtils';
+import { getEnrichedTransactionsForPeriod } from '@/core/transactionForecast';
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -21,6 +22,7 @@ export const DashboardPage: React.FC = () => {
     accounts,
     transactions,
     categories,
+    budgetConfig,
   } = useAppStore();
 
   const [periodRange, setPeriodRange] = useState<'1m' | '6m' | '1a'>('1a');
@@ -122,13 +124,14 @@ export const DashboardPage: React.FC = () => {
     ? boxes
     : boxes.filter((b) => b.ownerMemberId === selectedMemberId);
 
-  // Transações filtradas por membro
-  const memberTransactions: FinancialTransaction[] = isAll
-    ? transactions
-    : transactions.filter((t) => t.memberId === selectedMemberId);
-
-  // Transações filtradas para o período selecionado (mês ou intervalo de datas)
-  const activeTransactions = filterTransactionsByPeriod(memberTransactions, periodFilter);
+  // Transações enriquecidas para o período selecionado (incluindo previsões emuladas em tempo real)
+  const activeTransactions = getEnrichedTransactionsForPeriod({
+    transactions,
+    periodFilter,
+    familyMembers,
+    budgetConfig,
+    selectedMemberId,
+  });
 
   // ==========================================
   // CÁLCULOS DERIVADOS DO FIRESTORE

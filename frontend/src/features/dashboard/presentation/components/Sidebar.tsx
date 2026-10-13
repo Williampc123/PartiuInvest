@@ -9,14 +9,16 @@ interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   onOpenOpenFinance?: () => void;
+  onOpenInvestments?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   isOpen = false,
   onClose,
   onOpenOpenFinance,
+  onOpenInvestments,
 }) => {
-  const { user, setUser, setIsInitialSetupOpen, setIsBudgetSetupOpen } = useAppStore();
+  const { user, setUser, setIsInitialSetupOpen, setIsBudgetSetupOpen, setIsInvestmentsOpen } = useAppStore();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -141,7 +143,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </NavLink>
         </li>
 
-        {/* 7. Partiu Aprender */}
+        {/* 7. Investimentos (Investidor10 Clone & PRO) */}
+        <li>
+          <button
+            type="button"
+            onClick={() => {
+              handleNavClick();
+              setIsInvestmentsOpen(true);
+              onOpenInvestments?.();
+            }}
+            className={`menu-link w-full text-left !bg-gradient-to-r from-gold/15 to-transparent hover:!from-gold/25 border border-gold/30 rounded-2xl group transition ${
+              isMobile ? '!justify-start !px-3.5' : ''
+            }`}
+          >
+            <div className="h-6 w-6 rounded-lg bg-gold/20 flex items-center justify-center text-gold-deep group-hover:scale-110 transition">
+              <Sparkles className="h-3.5 w-3.5" />
+            </div>
+            <div className={`flex items-center gap-1.5 ${isMobile ? 'inline-flex' : 'md:max-xl:hidden inline-flex'}`}>
+              <span className="font-black text-navy">Investimentos</span>
+              <span className="rounded bg-gold/30 px-1 py-0.2 text-[9px] font-black text-[#7A4F08] uppercase">10 PRO</span>
+            </div>
+          </button>
+        </li>
+
+        {/* 8. Partiu Aprender */}
         <li>
           <NavLink
             to="/learning"

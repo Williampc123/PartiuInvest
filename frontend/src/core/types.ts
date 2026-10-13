@@ -94,6 +94,8 @@ export interface FinancialTransaction {
   totalInstallments?: number;
   isPaid?: boolean;
   source: 'manual' | 'open_finance';
+  isVirtual?: boolean;
+  notes?: string;
   createdAt?: string;
 }
 
