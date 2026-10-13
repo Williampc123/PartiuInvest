@@ -32,6 +32,8 @@ import {
 import { ManageCategoriesModal } from '@/features/categories/presentation/components/ManageCategoriesModal';
 import { getCategoryIconComponent, getCategoryColor } from '@/core/categories';
 import { filterTransactionsByPeriod, formatPeriodLabel } from '@/core/dateUtils';
+import { getEnrichedTransactionsForPeriod } from '@/core/transactionForecast';
+import { skipBudgetCategoryMonth } from '@/features/budget/infrastructure/budgetService';
 import Swal from 'sweetalert2';
 
 export const TransactionsPage: React.FC = () => {
@@ -42,8 +44,11 @@ export const TransactionsPage: React.FC = () => {
     periodFilter,
     accounts,
     categories,
+    budgetConfig,
     user,
+    setBudgetConfig,
     setTransactions,
+    addTransaction,
     updateTransaction,
   } = useAppStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,13 +65,19 @@ export const TransactionsPage: React.FC = () => {
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // 1. Filtragem por membro
+  // 1. Obtenção das transações enriquecidas com previsões emuladas em tempo real (salários e orçamento)
+  const periodTransactions = getEnrichedTransactionsForPeriod({
+    transactions,
+    periodFilter,
+    familyMembers,
+    budgetConfig,
+    selectedMemberId,
+  });
+
+  // Transações do membro para cálculos auxiliares (preservando despesas familiares)
   const memberTransactions = selectedMemberId === 'all'
     ? transactions
-    : transactions.filter((t: FinancialTransaction) => t.memberId === selectedMemberId);
-
-  // 2. Filtragem por período selecionado (mês ou intervalo de datas)
-  const periodTransactions = filterTransactionsByPeriod(memberTransactions, periodFilter);
+    : transactions.filter((t: FinancialTransaction) => t.memberId === selectedMemberId || t.visibility === 'family' || t.memberId === 'family');
 
   // Cálculos de Totais para o período selecionado
   const incomeCents = periodTransactions
@@ -122,9 +133,30 @@ export const TransactionsPage: React.FC = () => {
     ].filter(Boolean))
   );
 
-  // Alternância rápida de status Pago vs Pendente
+  // Alternância rápida de status Pago vs Pendente (com materialização Just-in-Time para virtuais)
   const handleTogglePaid = async (t: FinancialTransaction) => {
     if (!user?.familyId) return;
+
+    // Se for uma movimentação emulada/virtual, materializa no Firestore naquele instante
+    if (t.isVirtual || t.id.startsWith('virtual_')) {
+      const realId = t.id.replace('virtual_', '');
+      const newTransaction: FinancialTransaction = {
+        ...t,
+        id: realId,
+        isPaid: true,
+        isVirtual: false,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        await updateTransactionInFirestore(user.familyId, realId, newTransaction);
+        addTransaction(newTransaction);
+        showToast('Movimentação prevista confirmada e registrada com sucesso!');
+      } catch (err) {
+        console.error('Erro ao materializar movimentação prevista:', err);
+      }
+      return;
+    }
+
     const currentPaid = t.isPaid === true;
     const newPaid = !currentPaid;
     try {
@@ -139,6 +171,92 @@ export const TransactionsPage: React.FC = () => {
   // Exclusão de movimentação com suporte a parcelas vinculadas e SweetAlert2
   const handleDelete = async (trans: FinancialTransaction) => {
     if (!user?.familyId) return;
+
+    // 1. Tratamento para Previsões do Orçamento Familiar (Reais 'bud_' ou Virtuais 'virtual_bud_')
+    const isBudgetForecast = trans.id.startsWith('bud_') || trans.id.startsWith('virtual_bud_');
+
+    if (isBudgetForecast) {
+      const yearMonth = trans.date ? trans.date.slice(0, 7) : '';
+      const [year, month] = yearMonth.split('-');
+      const monthNames = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+      const monthLabel = yearMonth && month
+        ? `${monthNames[parseInt(month, 10) - 1]} de ${year}`
+        : 'neste mês';
+
+      const result = await Swal.fire({
+        title: 'Pular Despesa no Mês?',
+        html: `
+          <div class="text-left text-sm text-navy space-y-2.5">
+            <p>A despesa <b>"${trans.description}"</b> é uma previsão do seu <b>Orçamento Familiar</b>.</p>
+            <p class="text-muted text-xs">Deseja suspender esta previsão em <b>${monthLabel}</b>? Os outros meses continuarão provisionados normalmente.</p>
+          </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: `Sim, pular em ${monthLabel}`,
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#DC2626',
+        cancelButtonColor: '#94A3B8',
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: {
+          popup: 'rounded-3xl border border-navy/10 shadow-2xl p-6 font-sans',
+          confirmButton: 'rounded-xl text-xs font-bold py-2.5 px-4 shadow-sm',
+          cancelButton: 'rounded-xl text-xs font-bold py-2.5 px-4',
+        },
+      });
+
+      if (result.isConfirmed) {
+        try {
+          const categoryToSkip = trans.category || trans.description;
+          const updatedConfig = await skipBudgetCategoryMonth(
+            user.familyId,
+            categoryToSkip,
+            yearMonth,
+            budgetConfig
+          );
+          if (updatedConfig) {
+            setBudgetConfig(updatedConfig);
+          }
+
+          // Se for uma transação física existente no Firestore, deleta-a
+          if (!trans.id.startsWith('virtual_')) {
+            await deleteTransactionFromFirestore(user.familyId, trans.id);
+          }
+
+          setTransactions(transactions.filter((t) => t.id !== trans.id));
+
+          Swal.fire({
+            title: 'Despesa Suspensa!',
+            text: `A previsão de "${trans.description}" não será contabilizada em ${monthLabel}.`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-2xl font-sans' },
+          });
+        } catch (err) {
+          console.error('Erro ao suspender previsão do orçamento:', err);
+          Swal.fire('Erro', 'Não foi possível suspender a despesa do orçamento neste mês.', 'error');
+        }
+      }
+      return;
+    }
+
+    // Se for virtual genérica (ex: salário), informa que é uma previsão configurada
+    if (trans.isVirtual || trans.id.startsWith('virtual_')) {
+      Swal.fire({
+        title: 'Previsão Automática',
+        text: `"${trans.description}" é uma previsão calculada a partir dos Salários configurados dos membros. Para alterar ou remover, ajuste as configurações em Minha Família.`,
+        icon: 'info',
+        confirmButtonColor: '#F5B82E',
+        confirmButtonText: 'Entendi',
+        customClass: { popup: 'rounded-2xl font-sans' },
+      });
+      return;
+    }
 
     const installmentInfo = getInstallmentInfo(trans, transactions);
     const hasSisterInstallments = installmentInfo.isInstallment && installmentInfo.sisterTransactions.length > 1;
@@ -532,7 +650,22 @@ export const TransactionsPage: React.FC = () => {
                               Open Finance
                             </span>
                           )}
-                          {(isBill || t.isRecurring) && (
+                          {(t.isVirtual || t.id.startsWith('virtual_') || (!t.isPaid && (t.id.startsWith('bud_') || t.id.startsWith('sal_') || t.description.toLowerCase().startsWith('salário previsto')))) && (
+                            <span className="pill bg-amber-500/20 text-amber-800 border border-amber-500/30 text-[10px] py-0 px-1.5 font-bold flex items-center gap-0.5">
+                              <Clock className="h-2.5 w-2.5" />
+                              Previsão
+                            </span>
+                          )}
+                          {t.installmentNumber && t.totalInstallments ? (
+                            <span className="pill bg-navy/10 text-navy text-[10px] py-0 px-1.5 font-bold">
+                              Parcela {t.installmentNumber}/{t.totalInstallments}
+                            </span>
+                          ) : null}
+                          {t.id.startsWith('bud_') || t.id.startsWith('virtual_bud_') ? (
+                            <span className="pill bg-gold/20 text-[#7A4F08] text-[10px] py-0 px-1.5 font-bold">
+                              Orçado
+                            </span>
+                          ) : (isBill || t.isRecurring) ? (
                             <span className="pill bg-gold/25 text-[#7A4F08] text-[10px] py-0 px-1.5 font-bold flex items-center gap-0.5">
                               <Repeat className="h-2.5 w-2.5" />
                               {t.recurrenceFrequency
@@ -542,7 +675,7 @@ export const TransactionsPage: React.FC = () => {
                                 ? ` (até ${t.recurrenceEndMonth.split('-').reverse().join('/')})`
                                 : ''}
                             </span>
-                          )}
+                          ) : null}
                         </div>
 
                         {/* Metadados: Categoria, Data, Titular, Conta */}

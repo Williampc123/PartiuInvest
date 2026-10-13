@@ -114,6 +114,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
   const [selectedMemberId, setSelectedMemberId] = useState(user?.memberId || '');
   const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || 'wallet');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [repetitionMode, setRepetitionMode] = useState<'recurring' | 'installment'>('recurring');
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<RecurrenceFrequency>('mensal');
   const [recurrenceEndMonth, setRecurrenceEndMonth] = useState('');
   const [visibility, setVisibility] = useState<'family' | 'private'>('family');
@@ -180,12 +181,13 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
         : [date];
 
       const totalInstallments = recurrenceDates.length;
+      const isInstallment = isRecurring && repetitionMode === 'installment' && totalInstallments > 1;
       const batch = writeBatch(db);
 
       recurrenceDates.forEach((recDate, index) => {
         const transRef = doc(collection(db, `families/${user.familyId}/transactions`));
-        const installmentSuffix =
-          totalInstallments > 1 ? ` (${index + 1}/${totalInstallments})` : '';
+        // Apenas compras parceladas recebem o sufixo numérico (ex: 1/10). Recorrências mantêm nome limpo!
+        const installmentSuffix = isInstallment ? ` (${index + 1}/${totalInstallments})` : '';
         const finalDescription = `${description.trim()}${installmentSuffix}`;
 
         const payload: Record<string, any> = {
@@ -198,21 +200,20 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
           category,
           date: recDate,
           type: isRecurring && type === 'expense' ? 'bill' : type,
-          isRecurring,
+          isRecurring: isRecurring && repetitionMode === 'recurring',
           isPaid,
           source: 'manual',
           createdAt: new Date().toISOString(),
         };
 
-        if (isRecurring) {
+        if (isRecurring && repetitionMode === 'recurring') {
           payload.recurrenceFrequency = recurrenceFrequency;
           if (recurrenceEndMonth) {
             payload.recurrenceEndMonth = recurrenceEndMonth;
           }
-          if (totalInstallments > 1) {
-            payload.installmentNumber = index + 1;
-            payload.totalInstallments = totalInstallments;
-          }
+        } else if (isInstallment) {
+          payload.installmentNumber = index + 1;
+          payload.totalInstallments = totalInstallments;
         }
 
         batch.set(transRef, payload);
@@ -227,6 +228,7 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
         setDescription('');
         setAmountInput('');
         setIsRecurring(false);
+        setRepetitionMode('recurring');
         setRecurrenceFrequency('mensal');
         setRecurrenceEndMonth('');
         setIsPaid(false);
@@ -472,59 +474,118 @@ export const NewTransactionModal: React.FC<NewTransactionModalProps> = ({ isOpen
               </div>
 
               {isRecurring && (
-                <div className="pt-3 border-t border-gold/20 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="pt-3 border-t border-gold/20 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  {/* Tipo de Repetição: Recorrência vs Parcelamento */}
                   <div>
-                    <label className="block text-xs font-bold text-navy mb-1 flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-gold-deep" /> Periodicidade
+                    <label className="block text-xs font-bold text-navy mb-1.5">
+                      Tipo de Repetição:
                     </label>
-                    <select
-                      value={recurrenceFrequency}
-                      onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
-                      className="w-full h-10 px-3 rounded-xl border border-navy/15 bg-white text-xs font-semibold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                    >
-                      <option value="mensal">Mensal (todo mês)</option>
-                      <option value="semanal">Semanal (toda semana)</option>
-                      <option value="quinzenal">Quinzenal (a cada 15 dias)</option>
-                      <option value="bimestral">Bimestral (a cada 2 meses)</option>
-                      <option value="trimestral">Trimestral (a cada 3 meses)</option>
-                      <option value="semestral">Semestral (a cada 6 meses)</option>
-                      <option value="anual">Anual (uma vez por ano)</option>
-                    </select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setRepetitionMode('recurring')}
+                        className={`p-2 rounded-xl text-left border transition text-xs flex flex-col gap-0.5 ${
+                          repetitionMode === 'recurring'
+                            ? 'bg-gold/20 border-gold-deep text-navy shadow-sm font-bold'
+                            : 'bg-white/60 border-navy/15 text-muted hover:border-gold/40'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-navy">
+                          <Repeat className="h-3 w-3 text-gold-deep" /> Recorrente / Fixo
+                        </span>
+                        <span className="text-[10px] text-muted leading-tight">
+                          Contínuo (ex: aluguel, assinatura). Sem parcelas.
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setRepetitionMode('installment')}
+                        className={`p-2 rounded-xl text-left border transition text-xs flex flex-col gap-0.5 ${
+                          repetitionMode === 'installment'
+                            ? 'bg-gold/20 border-gold-deep text-navy shadow-sm font-bold'
+                            : 'bg-white/60 border-navy/15 text-muted hover:border-gold/40'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1 text-[11px] font-bold text-navy">
+                          <span className="font-extrabold text-[10px] text-gold-deep">1/X</span> Compra Parcelada
+                        </span>
+                        <span className="text-[10px] text-muted leading-tight">
+                          Dívida dividida em parcelas numeradas (1/X até X/X).
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-navy mb-1 flex items-center gap-1">
-                      <CalendarRange className="h-3.5 w-3.5 text-gold-deep" /> Data Final (Mês / Ano)
-                    </label>
-                    <input
-                      type="month"
-                      value={recurrenceEndMonth}
-                      min={date ? date.slice(0, 7) : undefined}
-                      onChange={(e) => setRecurrenceEndMonth(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl border border-navy/15 bg-white text-xs font-semibold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-navy mb-1 flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-gold-deep" /> Periodicidade
+                      </label>
+                      <select
+                        value={recurrenceFrequency}
+                        onChange={(e) => setRecurrenceFrequency(e.target.value as any)}
+                        className="w-full h-10 px-3 rounded-xl border border-navy/15 bg-white text-xs font-semibold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
+                      >
+                        <option value="mensal">Mensal (todo mês)</option>
+                        <option value="semanal">Semanal (toda semana)</option>
+                        <option value="quinzenal">Quinzenal (a cada 15 dias)</option>
+                        <option value="bimestral">Bimestral (a cada 2 meses)</option>
+                        <option value="trimestral">Trimestral (a cada 3 meses)</option>
+                        <option value="semestral">Semestral (a cada 6 meses)</option>
+                        <option value="anual">Anual (uma vez por ano)</option>
+                      </select>
+                    </div>
 
-                  {previewCount > 1 ? (
-                    <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-gold/15 border border-gold/30 text-[11px] text-navy font-medium flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-gold-deep shrink-0" />
-                      <span>
-                        Serão gerados <b>{previewCount} lançamentos</b> com parcelas automáticas:{' '}
-                        <span className="font-bold text-navy-soft">
-                          "{description.trim() || 'Lançamento'} (1/{previewCount})"
-                        </span>{' '}
-                        até{' '}
-                        <span className="font-bold text-navy-soft">
-                          "({previewCount}/{previewCount})"
-                        </span>.
-                      </span>
+                    <div>
+                      <label className="block text-xs font-bold text-navy mb-1 flex items-center gap-1">
+                        <CalendarRange className="h-3.5 w-3.5 text-gold-deep" /> Data Final (Mês / Ano)
+                      </label>
+                      <input
+                        type="month"
+                        value={recurrenceEndMonth}
+                        min={date ? date.slice(0, 7) : undefined}
+                        onChange={(e) => setRecurrenceEndMonth(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border border-navy/15 bg-white text-xs font-semibold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
+                      >
+                      </input>
                     </div>
-                  ) : !recurrenceEndMonth ? (
-                    <div className="col-span-1 sm:col-span-2 text-[11px] text-muted flex items-center gap-1.5">
-                      <Info className="h-3.5 w-3.5 text-muted shrink-0" />
-                      <span>Selecione o mês final para gerar as parcelas numeradas (ex: 1/8 a 8/8).</span>
-                    </div>
-                  ) : null}
+
+                    {previewCount > 1 ? (
+                      <div className="col-span-1 sm:col-span-2 p-2.5 rounded-xl bg-gold/15 border border-gold/30 text-[11px] text-navy font-medium flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-gold-deep shrink-0" />
+                        {repetitionMode === 'installment' ? (
+                          <span>
+                            Serão geradas <b>{previewCount} parcelas numeradas</b>:{' '}
+                            <span className="font-bold text-navy-soft">
+                              "{description.trim() || 'Lançamento'} (1/{previewCount})"
+                            </span>{' '}
+                            até{' '}
+                            <span className="font-bold text-navy-soft">
+                              "({previewCount}/{previewCount})"
+                            </span>.
+                          </span>
+                        ) : (
+                          <span>
+                            Serão gerados <b>{previewCount} lançamentos recorrentes</b> com nome limpo:{' '}
+                            <span className="font-bold text-navy-soft">
+                              "{description.trim() || 'Lançamento'}"
+                            </span>{' '}
+                            (sem números de parcelas artificiais).
+                          </span>
+                        )}
+                      </div>
+                    ) : !recurrenceEndMonth ? (
+                      <div className="col-span-1 sm:col-span-2 text-[11px] text-muted flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5 text-muted shrink-0" />
+                        <span>
+                          {repetitionMode === 'installment'
+                            ? 'Selecione o mês final para calcular a quantidade de parcelas (ex: 1/10).'
+                            : 'Selecione até qual mês deseja projetar os lançamentos recorrentes.'}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               )}
             </div>

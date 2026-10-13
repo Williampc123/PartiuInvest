@@ -60,8 +60,8 @@ export async function generateProvisionedSalaries(
       const transactionId = `sal_${member.id}_${yearMonth.replace('-', '')}`;
       const transRef = doc(collection(db, `families/${familyId}/transactions`), transactionId);
 
-      const installmentSuffix = monthsCount > 1 ? ` (${k + 1}/${monthsCount})` : '';
-      const description = `Salário Previsto - ${member.displayName || member.name}${installmentSuffix}`;
+      // Salário é receita recorrente, não compra parcelada: manter descrição limpa sem sufixo (1/12)
+      const description = `Salário Previsto - ${member.displayName || member.name}`;
 
       const newTransaction: FinancialTransaction = {
         id: transactionId,
@@ -79,11 +79,6 @@ export async function generateProvisionedSalaries(
         source: 'manual',
         createdAt: new Date().toISOString(),
       };
-
-      if (monthsCount > 1) {
-        newTransaction.installmentNumber = k + 1;
-        newTransaction.totalInstallments = monthsCount;
-      }
 
       batch.set(transRef, newTransaction, { merge: true });
       batchCount++;
@@ -103,7 +98,7 @@ export async function generateProvisionedSalaries(
 }
 
 /**
- * Verifica e gera automaticamente as receitas previstas de salário para o mês vigente
+ * Verifica e gera automaticamente as receitas previstas de salário para os próximos 12 meses
  */
 export async function checkAndGenerateMonthlySalaries(
   familyId: string,
@@ -111,6 +106,6 @@ export async function checkAndGenerateMonthlySalaries(
   existingTransactions: FinancialTransaction[],
   targetDate: Date = new Date()
 ): Promise<number> {
-  return generateProvisionedSalaries(familyId, members, existingTransactions, 1, targetDate);
+  return generateProvisionedSalaries(familyId, members, existingTransactions, 12, targetDate);
 }
 

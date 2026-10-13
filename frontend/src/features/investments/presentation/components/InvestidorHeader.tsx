@@ -42,8 +42,8 @@ export const InvestidorHeader: React.FC<InvestidorHeaderProps> = ({
         <div className="flex items-center gap-5">
           {/* Logo Investidor10 estilizado */}
           <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => onTabChange('resumo')}>
-            <span className="text-xl font-black tracking-tight text-white">Investidor</span>
-            <span className="text-xl font-black text-amber-400">10</span>
+            <span className="text-xl font-black tracking-tight text-white">Partiu</span>
+            <span className="text-xl font-black text-amber-400">Investidor</span>
           </div>
 
           {/* Dropdown Carteira Padrão */}

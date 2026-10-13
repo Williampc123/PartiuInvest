@@ -9,6 +9,7 @@ import { BudgetSetupModal } from '@/features/budget/presentation/components/Budg
 import { InvestmentsFullScreenModal } from '@/features/investments/presentation/components/InvestmentsFullScreenModal';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { checkAndGenerateMonthlySalaries } from '@/features/family/infrastructure/salaryService';
+import { checkAndGenerateMonthlyBudgetExpenses } from '@/features/budget/infrastructure/budgetService';
 import {
   subscribeFamilyData,
   seedInitialFamilyDataIfEmpty,
@@ -21,6 +22,7 @@ export const AppLayout: React.FC = () => {
     user,
     familyMembers,
     transactions,
+    budgetConfig,
     initialSetupDone,
     isInitialSetupOpen,
     setIsInitialSetupOpen,
@@ -71,12 +73,24 @@ export const AppLayout: React.FC = () => {
     }
   }, [user?.familyId, initialSetupDone, setIsInitialSetupOpen]);
 
-  // Virada de Mês / Verificação Automática de Salários
+  // Virada de Mês / Verificação Automática de Salários e Despesas do Orçamento
   useEffect(() => {
-    if (!user?.familyId || !familyMembers || familyMembers.length === 0) return;
+    if (!user?.familyId) return;
 
-    checkAndGenerateMonthlySalaries(user.familyId, familyMembers, transactions);
-  }, [user?.familyId, familyMembers, transactions]);
+    if (familyMembers && familyMembers.length > 0) {
+      checkAndGenerateMonthlySalaries(user.familyId, familyMembers, transactions);
+    }
+
+    if (budgetConfig?.items && budgetConfig.items.length > 0) {
+      checkAndGenerateMonthlyBudgetExpenses(
+        user.familyId,
+        budgetConfig.items,
+        transactions,
+        new Date(),
+        user.memberId
+      );
+    }
+  }, [user?.familyId, familyMembers, budgetConfig, transactions]);
 
   if (!user) {
     return null;

@@ -14,6 +14,7 @@ interface AppState {
   transactions: FinancialTransaction[];
   categories: FinancialCategory[];
   budgetConfig: FamilyBudgetConfig | null;
+  setBudgetConfig: (budgetConfig: FamilyBudgetConfig | null) => void;
   selectedYearMonth: string; // formato YYYY-MM (ex: '2026-09')
   periodFilter: {
     type: 'month' | 'custom' | 'all';
@@ -54,6 +55,7 @@ interface AppState {
   addBoxCategory: (boxCategory: BoxCategory) => void;
   removeBoxCategory: (id: string) => void;
   setTransactions: (transactions: FinancialTransaction[]) => void;
+  addTransaction: (transaction: FinancialTransaction) => void;
   updateTransaction: (transaction: FinancialTransaction) => void;
   updateMultipleTransactions: (updatedList: FinancialTransaction[]) => void;
   setCategories: (categories: FinancialCategory[]) => void;
@@ -130,6 +132,7 @@ export const useAppStore = create<AppState>((set) => {
     setIsInitialSetupOpen: (isInitialSetupOpen) => set({ isInitialSetupOpen }),
     setIsBudgetSetupOpen: (isBudgetSetupOpen) => set({ isBudgetSetupOpen }),
     setIsInvestmentsOpen: (isInvestmentsOpen) => set({ isInvestmentsOpen }),
+    setBudgetConfig: (budgetConfig) => set({ budgetConfig }),
     setSelectedYearMonth: (selectedYearMonth) =>
       set({
         selectedYearMonth,
@@ -201,6 +204,13 @@ export const useAppStore = create<AppState>((set) => {
         boxCategories: state.boxCategories.filter((c) => c.id !== id),
       })),
     setTransactions: (transactions) => set({ transactions }),
+    addTransaction: (transaction) =>
+      set((state) => ({
+        transactions: [
+          ...state.transactions.filter((t) => t.id !== transaction.id),
+          transaction,
+        ],
+      })),
     updateTransaction: (transaction) =>
       set((state) => ({
         transactions: state.transactions.map((t) => (t.id === transaction.id ? transaction : t)),

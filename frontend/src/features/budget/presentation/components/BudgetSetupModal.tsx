@@ -2,24 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   PieChart,
   Sliders,
-  Sparkles,
   Plus,
   Trash2,
-  Calendar,
   CheckCircle2,
-  DollarSign,
-  Percent,
   AlertTriangle,
-  ArrowRight,
-  Info,
   X,
   Wallet,
-  TrendingDown,
-  Layers,
 } from 'lucide-react';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { Money } from '@/core/Money';
-import { getCategoryColor, getCategoryIconComponent, DEFAULT_CATEGORIES } from '@/core/categories';
+import { getCategoryColor, getCategoryIconComponent } from '@/core/categories';
 import {
   BudgetAllocationItem,
   saveBudgetConfig,
@@ -37,6 +29,7 @@ export interface BudgetAllocationFormItem {
   accountId?: string;
   color?: string;
   notes?: string;
+  skippedMonths?: string[];
 }
 
 interface BudgetSetupModalProps {
@@ -64,7 +57,16 @@ const parsePercentageInput = (valStr: string): number => {
 };
 
 export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onClose }) => {
-  const { user, familyMembers, accounts, categories, transactions, budgetConfig } = useAppStore();
+  const {
+    user,
+    familyMembers,
+    accounts,
+    categories,
+    transactions,
+    budgetConfig,
+    setBudgetConfig,
+    setTransactions,
+  } = useAppStore();
 
   // 1. Receita total da família calculada a partir dos membros configurados
   const calculatedIncomeCents = useMemo(() => {
@@ -75,9 +77,6 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
   // Permite override se não houver membros configurados ainda
   const [baseIncomeInput, setBaseIncomeInput] = useState('');
   const [items, setItems] = useState<BudgetAllocationFormItem[]>([]);
-  const [provisionExpenses, setProvisionExpenses] = useState(true);
-  const [provisionPeriod, setProvisionPeriod] = useState<'3m' | '6m' | '1y' | '2y' | '3y' | 'custom'>('1y');
-  const [customMonths, setCustomMonths] = useState(12);
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -92,9 +91,11 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
     return isNaN(num) ? 0 : Math.round(num * 100);
   }, [calculatedIncomeCents, baseIncomeInput]);
 
-  // Lista apenas categorias do tipo 'expense' ou 'both'
+  // Lista categorias disponíveis para orçamento (despesas, caixinhas e investimentos)
   const expenseCategories = useMemo(() => {
-    return categories.filter((c) => c.type === 'expense' || c.type === 'both');
+    return categories.filter(
+      (c) => c.type === 'expense' || c.type === 'both' || c.name.toLowerCase().includes('investimento')
+    );
   }, [categories]);
 
   // Aplicação de Presets Financeiros
@@ -174,6 +175,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
         accountId: it.accountId || 'wallet',
         color: it.color || getCategoryColor(it.categoryName, categories),
         notes: it.notes,
+        skippedMonths: it.skippedMonths,
       }));
       setItems(loaded);
     } else if (items.length === 0) {
@@ -326,26 +328,6 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
-  const getMonthsCount = (): number => {
-    if (!provisionExpenses) return 1;
-    switch (provisionPeriod) {
-      case '3m': return 3;
-      case '6m': return 6;
-      case '1y': return 12;
-      case '2y': return 24;
-      case '3y': return 36;
-      case 'custom': return Math.max(1, Math.min(60, customMonths || 1));
-      default: return 12;
-    }
-  };
-
-  const getPeriodRangeLabel = (months: number): string => {
-    const start = new Date();
-    const end = new Date(start.getFullYear(), start.getMonth() + months - 1, 1);
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    return `${monthNames[start.getMonth()]}/${start.getFullYear()} até ${monthNames[end.getMonth()]}/${end.getFullYear()}`;
-  };
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.familyId) return;
@@ -354,39 +336,64 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
     setLoading(true);
 
     try {
-      const cleanItems: BudgetAllocationItem[] = items.map((i) => {
-        const itemObj: BudgetAllocationItem = {
-          id: i.id || '',
-          categoryName: i.categoryName || '',
-          percentage: Number(i.percentage) || 0,
-          amountCents: Number(i.amountCents) || 0,
-          dueDay: Number(i.dueDay) || 10,
-          accountId: i.accountId || 'wallet',
-        };
-        if (i.color) itemObj.color = i.color;
-        if (i.notes) itemObj.notes = i.notes;
-        return itemObj;
-      });
+      const cleanItems: BudgetAllocationItem[] = items
+        .map((i) => {
+          let cents = Number(i.amountCents) || 0;
+          if (cents <= 0 && i.amountStr) {
+            cents = parseMoneyInputToCents(i.amountStr);
+          }
+          if (cents <= 0 && i.percentage && effectiveTotalIncomeCents > 0) {
+            cents = Math.round((effectiveTotalIncomeCents * Number(i.percentage)) / 100);
+          }
+
+          const itemObj: BudgetAllocationItem = {
+            id: i.id || '',
+            categoryName: (i.categoryName || '').trim(),
+            percentage: Number(i.percentage) || 0,
+            amountCents: cents,
+            dueDay: Number(i.dueDay) || 10,
+            accountId: i.accountId || 'wallet',
+          };
+          if (i.color) itemObj.color = i.color;
+          if (i.notes?.trim()) itemObj.notes = i.notes.trim();
+          if (Array.isArray(i.skippedMonths) && i.skippedMonths.length > 0) {
+            itemObj.skippedMonths = i.skippedMonths;
+          }
+          return itemObj;
+        })
+        .filter((it) => it.categoryName && it.amountCents > 0);
 
       // 1. Salva a configuração de orçamento no documento da família
       await saveBudgetConfig(user.familyId, effectiveTotalIncomeCents, cleanItems);
 
-      // 2. Se a opção de provisionar estiver marcada, gera os lançamentos previstos no Firestore
-      if (provisionExpenses) {
-        const monthsCount = getMonthsCount();
-        await generateProvisionedBudgetExpenses(
-          user.familyId,
-          cleanItems,
-          transactions,
-          monthsCount
-        );
+      // 2. Atualiza imediatamente o store local de budgetConfig
+      const newBudgetConfig = {
+        totalIncomeCents: effectiveTotalIncomeCents,
+        items: cleanItems,
+        updatedAt: new Date().toISOString(),
+      };
+      setBudgetConfig(newBudgetConfig);
+
+      // 3. Provisiona automaticamente as despesas do orçamento para os próximos 12 meses
+      const provisionResult = await generateProvisionedBudgetExpenses(
+        user.familyId,
+        cleanItems,
+        transactions,
+        12,
+        new Date(),
+        user.memberId
+      );
+
+      // 4. Atualiza imediatamente o store local de transações com as provisões geradas
+      if (provisionResult?.updatedTransactions && provisionResult.updatedTransactions.length > 0) {
+        setTransactions(provisionResult.updatedTransactions);
       }
 
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
         onClose();
-      }, 1200);
+      }, 1000);
     } catch (err: any) {
       console.error('Erro ao salvar separação de orçamento:', err);
       setErrorMsg(err?.message || 'Erro ao salvar orçamento familiar.');
@@ -442,8 +449,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
             </div>
             <h3 className="text-xl font-black text-navy">Orçamento Familiar Salvo!</h3>
             <p className="text-xs sm:text-sm text-muted max-w-md">
-              O planejamento orçamentário foi gravado com sucesso
-              {provisionExpenses && ` e as despesas foram provisionadas para os próximos ${getMonthsCount()} meses`}.
+              O planejamento orçamentário foi gravado com sucesso.
             </p>
           </div>
         ) : (
@@ -597,6 +603,13 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
                             onChange={(e) => handleCategoryChange(item.id, e.target.value)}
                             className="w-full h-9 px-2.5 rounded-xl border border-navy/15 text-xs sm:text-sm font-bold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
                           >
+                            {!item.categoryName && <option value="">Selecione a categoria...</option>}
+                            {item.categoryName &&
+                              !expenseCategories.some(
+                                (c) => c.name.toLowerCase() === item.categoryName.toLowerCase()
+                              ) && (
+                                <option value={item.categoryName}>{item.categoryName}</option>
+                              )}
                             {expenseCategories.map((c) => (
                               <option key={c.id} value={c.name}>
                                 {c.name}
@@ -709,100 +722,6 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
                   <span>+ Adicionar Categoria de Despesa</span>
                 </button>
               </div>
-
-              {/* Bloco 4: Provisionamento por Período */}
-              <div className={`p-4 rounded-2xl border transition-all space-y-3 mt-3 ${
-                provisionExpenses
-                  ? 'bg-gold/10 border-gold/40 shadow-sm'
-                  : 'bg-navy/[0.02] border-navy/10'
-              }`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
-                      provisionExpenses ? 'bg-gold/30 text-gold-deep' : 'bg-navy/10 text-muted'
-                    }`}>
-                      <Calendar className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <label htmlFor="budget-provision-checkbox" className="block text-xs sm:text-sm font-extrabold text-navy cursor-pointer">
-                        Provisionar despesas do orçamento por um período
-                      </label>
-                      <p className="text-[11px] text-muted">
-                        Lança as contas e despesas previstas automaticamente para cada mês da série.
-                      </p>
-                    </div>
-                  </div>
-                  <input
-                    id="budget-provision-checkbox"
-                    type="checkbox"
-                    checked={provisionExpenses}
-                    onChange={(e) => setProvisionExpenses(e.target.checked)}
-                    className="h-5 w-5 rounded-lg accent-gold cursor-pointer shrink-0"
-                  />
-                </div>
-
-                {provisionExpenses && (
-                  <div className="pt-3 border-t border-gold/25 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <label className="block text-xs font-bold text-navy">
-                      Escolha o período de provisionamento:
-                    </label>
-
-                    {/* Seletores de Período */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                      {[
-                        { key: '3m', label: '3 meses', count: 3 },
-                        { key: '6m', label: '6 meses', count: 6 },
-                        { key: '1y', label: '1 ano', count: 12 },
-                        { key: '2y', label: '2 anos', count: 24 },
-                        { key: '3y', label: '3 anos', count: 36 },
-                        { key: 'custom', label: 'Personalizado', count: customMonths },
-                      ].map((p) => (
-                        <button
-                          key={p.key}
-                          type="button"
-                          onClick={() => setProvisionPeriod(p.key as any)}
-                          className={`py-2 px-2 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center text-center ${
-                            provisionPeriod === p.key
-                              ? 'bg-gold text-navy-deep border-gold-deep ring-2 ring-gold/40 shadow-sm'
-                              : 'bg-white border-navy/15 text-navy hover:border-gold/50'
-                          }`}
-                        >
-                          <span>{p.label}</span>
-                          {p.key !== 'custom' && (
-                            <span className="text-[10px] opacity-75">{p.count} parcelas</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Campo de meses personalizado */}
-                    {provisionPeriod === 'custom' && (
-                      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-gold/30">
-                        <label className="text-xs font-bold text-navy whitespace-nowrap">
-                          Quantidade de meses:
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="60"
-                          value={customMonths ?? 12}
-                          onChange={(e) => setCustomMonths(Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 1)))}
-                          className="w-24 h-9 px-3 rounded-lg border border-navy/20 text-xs font-extrabold text-navy focus:ring-2 focus:ring-gold focus:outline-none"
-                        />
-                        <span className="text-xs text-muted">meses (1 a 60 parcelas)</span>
-                      </div>
-                    )}
-
-                    {/* Badge informativo com preview */}
-                    <div className="p-2.5 rounded-xl bg-white/90 border border-gold/30 flex items-center gap-2 text-[11px] text-navy font-semibold">
-                      <Sparkles className="h-4 w-4 text-gold-deep shrink-0" />
-                      <span>
-                        Serão geradas <b>{getMonthsCount()} parcelas mensais</b> de despesas previstas para cada categoria ({getPeriodRangeLabel(getMonthsCount())}).
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Rodapé de Ações */}
@@ -824,7 +743,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
                   disabled={loading}
                   className="btn-gold text-xs h-10 px-6 font-bold flex-1 sm:flex-none shadow-md"
                 >
-                  {loading ? 'Salvando...' : 'Salvar & Provisionar Orçamento'}
+                  {loading ? 'Salvando...' : 'Salvar Orçamento'}
                 </button>
               </div>
             </div>
