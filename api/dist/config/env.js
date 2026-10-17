@@ -8,7 +8,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const zod_1 = require("zod");
 dotenv_1.default.config();
 const envSchema = zod_1.z.object({
-    PORT: zod_1.z.string().default('8080').transform((v) => parseInt(v, 10)),
+    PORT: zod_1.z.string().default('3333').transform((v) => parseInt(v, 10)),
     NODE_ENV: zod_1.z.enum(['development', 'test', 'production']).default('development'),
     ALLOWED_ORIGINS: zod_1.z.string().default('http://localhost:5173'),
     FIREBASE_PROJECT_ID: zod_1.z.string().default('partiuinvest'),

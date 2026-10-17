@@ -4,7 +4,7 @@ import { z } from 'zod';
 dotenv.config();
 
 const envSchema = z.object({
-  PORT: z.string().default('8080').transform((v) => parseInt(v, 10)),
+  PORT: z.string().default('3333').transform((v) => parseInt(v, 10)),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:5173'),
   FIREBASE_PROJECT_ID: z.string().default('partiuinvest'),

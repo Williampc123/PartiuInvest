@@ -236,13 +236,14 @@ export async function getAssetDetails(ticker: string, targetDateStr?: string) {
 
   // Se uma data específica foi informada
   if (targetDateStr) {
-    try {
-      if (isCrypto) {
+    if (isCrypto) {
+      try {
         const targetTs = new Date(targetDateStr).getTime();
         const startTs = targetTs - 86400000 * 2;
         const endTs = targetTs + 86400000 * 2;
         const bRes = await fetch(
-          `https://api.binance.com/api/v3/klines?symbol=${cleanTicker}USDT&interval=1d&startTime=${startTs}&endTime=${endTs}&limit=5`
+          `https://api.binance.com/api/v3/klines?symbol=${cleanTicker}USDT&interval=1d&startTime=${startTs}&endTime=${endTs}&limit=5`,
+          { signal: AbortSignal.timeout(4000) }
         );
         if (bRes.ok) {
           const klines = (await bRes.json()) as any[][];
@@ -253,11 +254,22 @@ export async function getAssetDetails(ticker: string, targetDateStr?: string) {
             liveName = cleanTicker;
           }
         }
-      } else {
-        // Yahoo Finance consulta histórica
+      } catch (err) {
+        console.warn(`[marketDataService] Erro Binance histórico para ${cleanTicker}:`, err);
+      }
+    } else {
+      // 1. Tentar Yahoo Finance histórico
+      try {
         const yahooSymbol = cleanTicker.includes('.') ? cleanTicker : `${cleanTicker}.SA`;
         const yRes = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=2y`
+          `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=2y`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              Accept: 'application/json',
+            },
+            signal: AbortSignal.timeout(4000),
+          }
         );
         if (yRes.ok) {
           const yJson: any = await yRes.json();
@@ -268,37 +280,38 @@ export async function getAssetDetails(ticker: string, targetDateStr?: string) {
 
           if (meta) {
             liveName = meta.shortName || meta.longName || liveName;
+            if (meta.regularMarketPrice) {
+              livePrice = meta.regularMarketPrice;
+            }
+            if (meta.chartPreviousClose && meta.regularMarketPrice) {
+              liveChange = ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100;
+            }
           }
 
           if (timestamps.length > 0 && closes.length > 0) {
             const targetTime = new Date(`${targetDateStr}T23:59:59Z`).getTime() / 1000;
-            // Encontra o timestamp mais próximo menor ou igual à data alvo (para tratar finais de semana/feriados)
-            let chosenIdx = -1;
             for (let i = timestamps.length - 1; i >= 0; i--) {
               if (timestamps[i] <= targetTime && closes[i] !== null && closes[i] > 0) {
-                chosenIdx = i;
+                livePrice = closes[i];
                 break;
               }
             }
-
-            if (chosenIdx >= 0) {
-              livePrice = closes[chosenIdx];
-            } else if (meta?.regularMarketPrice) {
-              livePrice = meta.regularMarketPrice;
-            }
           }
         }
+      } catch (err) {
+        console.warn(`[marketDataService] Erro Yahoo histórico para ${cleanTicker}:`, err);
       }
-    } catch (err) {
-      console.warn(`[marketDataService] Erro ao buscar cotação histórica para ${cleanTicker} em ${targetDateStr}:`, err);
     }
   }
 
-  // 1. Se não encontrou cotação histórica ou não foi informada data, tentar obter cotação ao vivo
+  // Se não obteve cotação (ou se não foi informada data), tentar cotação ao vivo
   if (livePrice === null) {
-    try {
-      if (isCrypto) {
-        const binanceRes = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${cleanTicker}USDT`);
+    if (isCrypto) {
+      try {
+        const binanceRes = await fetch(
+          `https://api.binance.com/api/v3/ticker/24hr?symbol=${cleanTicker}USDT`,
+          { signal: AbortSignal.timeout(4000) }
+        );
         if (binanceRes.ok) {
           const bData: any = await binanceRes.json();
           const usdRate = await getUsdRate();
@@ -306,41 +319,54 @@ export async function getAssetDetails(ticker: string, targetDateStr?: string) {
           liveChange = parseFloat(bData.priceChangePercent);
           liveName = cleanTicker;
         }
-      } else {
-        const brapiUrl = `https://brapi.dev/api/quote/${cleanTicker}?token=free`;
-        const brapiRes = await fetch(brapiUrl);
-        if (brapiRes.ok) {
-          const bJson: any = await brapiRes.json();
-          if (bJson.results && bJson.results[0]) {
-            const r = bJson.results[0];
-            if (r.regularMarketPrice) {
-              livePrice = r.regularMarketPrice;
-              liveChange = r.regularMarketChangePercent || 0;
-              liveName = r.longName || r.shortName || liveName;
+      } catch {}
+    } else {
+      // 1. Prioridade Yahoo Finance ao vivo
+      try {
+        const yahooSymbol = cleanTicker.includes('.') ? cleanTicker : `${cleanTicker}.SA`;
+        const yRes = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              Accept: 'application/json',
+            },
+            signal: AbortSignal.timeout(4000),
+          }
+        );
+        if (yRes.ok) {
+          const yJson: any = await yRes.json();
+          const meta = yJson.chart?.result?.[0]?.meta;
+          if (meta && meta.regularMarketPrice) {
+            livePrice = meta.regularMarketPrice;
+            liveName = meta.shortName || meta.longName || liveName;
+            if (meta.chartPreviousClose) {
+              liveChange = ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100;
             }
           }
         }
+      } catch (err) {
+        console.warn(`[marketDataService] Yahoo ao vivo falhou para ${cleanTicker}, tentando fallback...`);
+      }
 
-        if (!livePrice) {
-          const yahooSymbol = cleanTicker.includes('.') ? cleanTicker : `${cleanTicker}.SA`;
-          const yRes = await fetch(
-            `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`
-          );
-          if (yRes.ok) {
-            const yJson: any = await yRes.json();
-            const meta = yJson.chart?.result?.[0]?.meta;
-            if (meta && meta.regularMarketPrice) {
-              livePrice = meta.regularMarketPrice;
-              liveName = meta.shortName || meta.longName || liveName;
-              if (meta.chartPreviousClose && meta.regularMarketPrice) {
-                liveChange = ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100;
+      // 2. Fallback Brapi
+      if (livePrice === null) {
+        try {
+          const brapiUrl = `https://brapi.dev/api/quote/${cleanTicker}?token=free`;
+          const brapiRes = await fetch(brapiUrl, { signal: AbortSignal.timeout(3000) });
+          if (brapiRes.ok) {
+            const bJson: any = await brapiRes.json();
+            if (bJson.results && bJson.results[0]) {
+              const r = bJson.results[0];
+              if (r.regularMarketPrice) {
+                livePrice = r.regularMarketPrice;
+                liveChange = r.regularMarketChangePercent || 0;
+                liveName = r.longName || r.shortName || liveName;
               }
             }
           }
-        }
+        } catch {}
       }
-    } catch (err) {
-      console.warn(`[marketDataService] Erro ao buscar cotação ao vivo para ${cleanTicker}:`, err);
     }
   }
 
