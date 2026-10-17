@@ -1,12 +1,18 @@
 {
   "name": "partiu-invest-frontend",
+  "description": "Partiu Invest Desktop",
+  "author": "Partiu Invest",
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "electron:start": "electron .",
+    "electron:pack": "npm run build && node electron/pack.cjs",
+    "electron:build": "npm run build && node electron/pack.cjs",
     "cap:build": "npm run build && npx cap sync android",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android"
@@ -39,9 +45,31 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.19",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "electron-packager": "^17.1.2",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.4.5",
     "vite": "^5.2.13"
+  },
+  "build": {
+    "appId": "com.partiuinvest.desktop",
+    "productName": "Partiu Invest",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "dir",
+        "portable"
+      ],
+      "icon": "electron/icon.png"
+    }
   }
 }

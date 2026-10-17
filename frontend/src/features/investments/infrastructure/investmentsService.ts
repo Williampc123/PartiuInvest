@@ -53,7 +53,7 @@ const getEnv = (key: string, fallback: string) => {
 const API_BASE =
   (getEnv('VITE_API_BASE_URL', '') ? `${getEnv('VITE_API_BASE_URL', '')}/v1/investments` : '') ||
   (getEnv('VITE_API_URL', '') ? `${getEnv('VITE_API_URL', '')}/v1/investments` : '') ||
-  'http://localhost:8080/v1/investments';
+  'http://localhost:3333/v1/investments';
 
 // Catálogo abrangente para busca e autocomplete instantâneo
 export const POPULAR_TICKERS_CATALOG: {
@@ -64,35 +64,46 @@ export const POPULAR_TICKERS_CATALOG: {
   category: string;
 }[] = [
   // Ações B3
-  { ticker: 'PETR4', name: 'Petrobras PN', type: 'STOCK', defaultPrice: 36.85, category: 'Ações' },
-  { ticker: 'PETR3', name: 'Petrobras ON', type: 'STOCK', defaultPrice: 39.90, category: 'Ações' },
-  { ticker: 'VALE3', name: 'Vale ON', type: 'STOCK', defaultPrice: 58.90, category: 'Ações' },
+  { ticker: 'PETR4', name: 'Petrobras PN', type: 'STOCK', defaultPrice: 56.00, category: 'Ações' },
+  { ticker: 'PETR3', name: 'Petrobras ON', type: 'STOCK', defaultPrice: 58.50, category: 'Ações' },
+  { ticker: 'VALE3', name: 'Vale ON', type: 'STOCK', defaultPrice: 67.90, category: 'Ações' },
   { ticker: 'ITUB4', name: 'Itaú Unibanco PN', type: 'STOCK', defaultPrice: 34.20, category: 'Ações' },
-  { ticker: 'BBDC4', name: 'Bradesco PN', type: 'STOCK', defaultPrice: 14.80, category: 'Ações' },
-  { ticker: 'BBAS3', name: 'Banco do Brasil ON', type: 'STOCK', defaultPrice: 28.10, category: 'Ações' },
+  { ticker: 'BBDC4', name: 'Bradesco PN', type: 'STOCK', defaultPrice: 17.83, category: 'Ações' },
+  { ticker: 'BBDC3', name: 'Bradesco ON', type: 'STOCK', defaultPrice: 15.76, category: 'Ações' },
+  { ticker: 'BBAS3', name: 'Banco do Brasil ON', type: 'STOCK', defaultPrice: 21.61, category: 'Ações' },
   { ticker: 'WEGE3', name: 'WEG ON', type: 'STOCK', defaultPrice: 52.40, category: 'Ações' },
-  { ticker: 'TAEE11', name: 'Taesa Unit', type: 'STOCK', defaultPrice: 35.80, category: 'Ações' },
+  { ticker: 'TAEE11', name: 'Taesa Unit', type: 'STOCK', defaultPrice: 40.93, category: 'Ações' },
+  { ticker: 'TAEE3', name: 'Taesa ON', type: 'STOCK', defaultPrice: 15.31, category: 'Ações' },
+  { ticker: 'TAEE4', name: 'Taesa PN', type: 'STOCK', defaultPrice: 13.78, category: 'Ações' },
+  { ticker: 'CMIG4', name: 'Cemig PN', type: 'STOCK', defaultPrice: 10.90, category: 'Ações' },
+  { ticker: 'CMIG3', name: 'Cemig ON', type: 'STOCK', defaultPrice: 18.41, category: 'Ações' },
+  { ticker: 'CSMG3', name: 'Copasa ON', type: 'STOCK', defaultPrice: 57.95, category: 'Ações' },
+  { ticker: 'GGBR3', name: 'Gerdau ON', type: 'STOCK', defaultPrice: 21.10, category: 'Ações' },
+  { ticker: 'LEVE3', name: 'Mahle Metal Leve', type: 'STOCK', defaultPrice: 33.51, category: 'Ações' },
+  { ticker: 'BBSE3', name: 'BB Seguridade ON', type: 'STOCK', defaultPrice: 39.01, category: 'Ações' },
   { ticker: 'CPLE6', name: 'Copel PNB', type: 'STOCK', defaultPrice: 9.85, category: 'Ações' },
   { ticker: 'ELET3', name: 'Eletrobras ON', type: 'STOCK', defaultPrice: 41.50, category: 'Ações' },
   { ticker: 'MGLU3', name: 'Magazine Luiza ON', type: 'STOCK', defaultPrice: 10.20, category: 'Ações' },
   { ticker: 'RENT3', name: 'Localiza ON', type: 'STOCK', defaultPrice: 45.30, category: 'Ações' },
   { ticker: 'PRIO3', name: 'PRIO ON', type: 'STOCK', defaultPrice: 46.10, category: 'Ações' },
-  { ticker: 'CSMG3', name: 'Copasa ON', type: 'STOCK', defaultPrice: 32.45, category: 'Ações' },
   { ticker: 'KLBN11', name: 'Klabin Unit', type: 'STOCK', defaultPrice: 21.60, category: 'Ações' },
   { ticker: 'SUZB3', name: 'Suzano ON', type: 'STOCK', defaultPrice: 55.40, category: 'Ações' },
 
   // FIIs (Fundos Imobiliários)
-  { ticker: 'MXRF11', name: 'Maxi Renda FII', type: 'FII', defaultPrice: 10.15, category: 'FIIs' },
-  { ticker: 'HGLG11', name: 'CSHG Logística FII', type: 'FII', defaultPrice: 164.20, category: 'FIIs' },
+  { ticker: 'MXRF11', name: 'Maxi Renda FII', type: 'FII', defaultPrice: 9.09, category: 'FIIs' },
+  { ticker: 'HGLG11', name: 'CSHG Logística FII', type: 'FII', defaultPrice: 147.88, category: 'FIIs' },
   { ticker: 'KNCR11', name: 'Kinea Rendimentos FII', type: 'FII', defaultPrice: 102.50, category: 'FIIs' },
-  { ticker: 'XPML11', name: 'XP Malls FII', type: 'FII', defaultPrice: 112.40, category: 'FIIs' },
-  { ticker: 'XPLG11', name: 'XP Log FII', type: 'FII', defaultPrice: 105.80, category: 'FIIs' },
-  { ticker: 'VISC11', name: 'Vinci Shopping Centers', type: 'FII', defaultPrice: 118.20, category: 'FIIs' },
+  { ticker: 'XPML11', name: 'XP Malls FII', type: 'FII', defaultPrice: 98.68, category: 'FIIs' },
+  { ticker: 'XPLG11', name: 'XP Log FII', type: 'FII', defaultPrice: 92.54, category: 'FIIs' },
+  { ticker: 'VISC11', name: 'Vinci Shopping Centers', type: 'FII', defaultPrice: 103.74, category: 'FIIs' },
   { ticker: 'BTLG11', name: 'BTG Pactual Logística', type: 'FII', defaultPrice: 101.40, category: 'FIIs' },
   { ticker: 'CPTS11', name: 'Capitânia Securities FII', type: 'FII', defaultPrice: 7.95, category: 'FIIs' },
   { ticker: 'TGAR11', name: 'TG Ativo Real FII', type: 'FII', defaultPrice: 119.50, category: 'FIIs' },
-  { ticker: 'RURA11', name: 'Itaú Asset Rural Fiagro', type: 'FII', defaultPrice: 10.10, category: 'FIIs' },
-  { ticker: 'SNAG11', name: 'Suno Agro Fiagro', type: 'FII', defaultPrice: 10.05, category: 'FIIs' },
+  { ticker: 'RURA11', name: 'Itaú Asset Rural Fiagro', type: 'FII', defaultPrice: 8.09, category: 'FIIs' },
+  { ticker: 'SNAG11', name: 'Suno Agro Fiagro', type: 'FII', defaultPrice: 9.82, category: 'FIIs' },
+  { ticker: 'SNEL11', name: 'Suno Energias Limpas', type: 'FII', defaultPrice: 8.04, category: 'FIIs' },
+  { ticker: 'CACR11', name: 'Cartesia FII', type: 'FII', defaultPrice: 15.00, category: 'FIIs' },
+  { ticker: 'VSLH11', name: 'Versalhes Recebíveis FII', type: 'FII', defaultPrice: 1.63, category: 'FIIs' },
 
   // Criptomoedas
   { ticker: 'BTC', name: 'Bitcoin', type: 'CRYPTO', defaultPrice: 350162.0, category: 'Criptomoedas' },
@@ -126,33 +137,43 @@ export async function fetchLiveAssetQuote(
   if (!ticker || !ticker.trim()) return null;
   const cleanTicker = ticker.trim().toUpperCase();
 
-  // 1. Tentar endpoint da API Node.js com parâmetro de data
-  try {
-    const url = targetDateStr
+  // 1. Tentar endpoint da API Node.js (que consulta Yahoo / Brapi no backend sem restrições de CORS)
+  const candidateUrls = [
+    targetDateStr
       ? `${API_BASE}/market/quote/${cleanTicker}?date=${encodeURIComponent(targetDateStr)}`
-      : `${API_BASE}/market/quote/${cleanTicker}`;
+      : `${API_BASE}/market/quote/${cleanTicker}`,
+    targetDateStr
+      ? `/v1/investments/market/quote/${cleanTicker}?date=${encodeURIComponent(targetDateStr)}`
+      : `/v1/investments/market/quote/${cleanTicker}`,
+  ];
 
-    const res = await fetch(url, {
-      headers: getAuthHeader(),
-    });
-    if (res.ok) {
-      const json = await res.json();
-      if (json.data && json.data.price) {
-        return {
-          ticker: cleanTicker,
-          name: json.data.name || cleanTicker,
-          price: Number(json.data.price),
-          type: json.data.type || 'STOCK',
-          category: json.data.type === 'FII' ? 'FIIs' : json.data.type === 'CRYPTO' ? 'Criptomoedas' : 'Ações',
-        };
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url, {
+        headers: getAuthHeader(),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.price) {
+          return {
+            ticker: cleanTicker,
+            name: json.data.name || cleanTicker,
+            price: Number(json.data.price),
+            type: json.data.type || 'STOCK',
+            category: json.data.type === 'FII' ? 'FIIs' : json.data.type === 'CRYPTO' ? 'Criptomoedas' : 'Ações',
+          };
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
-  // 2. Fallback direto público (Brapi / Yahoo / Binance)
-  try {
-    if (['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE'].includes(cleanTicker)) {
-      const bRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${cleanTicker}USDT`);
+  // 2. Para criptomoedas, Binance é 100% pública e suporta CORS no browser
+  if (['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE'].includes(cleanTicker)) {
+    try {
+      const bRes = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${cleanTicker}USDT`, {
+        signal: AbortSignal.timeout(3000),
+      });
       if (bRes.ok) {
         const bData: any = await bRes.json();
         const priceBrl = parseFloat(bData.price) * 5.45;
@@ -164,70 +185,20 @@ export async function fetchLiveAssetQuote(
           category: 'Criptomoedas',
         };
       }
-    } else {
-      // Yahoo Finance para buscar a cotação exata da data especificada
-      const yahooSymbol = cleanTicker.includes('.') ? cleanTicker : `${cleanTicker}.SA`;
-      const yRes = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=2y`
-      );
-      if (yRes.ok) {
-        const yJson: any = await yRes.json();
-        const result = yJson.chart?.result?.[0];
-        const timestamps: number[] = result?.timestamp || [];
-        const closes: number[] = result?.indicators?.quote?.[0]?.close || [];
-        const meta = result?.meta;
-        const isFii = cleanTicker.endsWith('11') && !['TAEE11', 'KLBN11', 'SAPR11', 'ALUP11'].includes(cleanTicker);
+    } catch {}
+  }
 
-        if (timestamps.length > 0 && closes.length > 0 && targetDateStr) {
-          const targetTime = new Date(`${targetDateStr}T23:59:59Z`).getTime() / 1000;
-          let chosenIdx = -1;
-          for (let i = timestamps.length - 1; i >= 0; i--) {
-            if (timestamps[i] <= targetTime && closes[i] !== null && closes[i] > 0) {
-              chosenIdx = i;
-              break;
-            }
-          }
-
-          if (chosenIdx >= 0) {
-            return {
-              ticker: cleanTicker,
-              name: meta?.shortName || meta?.longName || cleanTicker,
-              price: Number(closes[chosenIdx].toFixed(2)),
-              type: isFii ? 'FII' : 'STOCK',
-              category: isFii ? 'FIIs' : 'Ações',
-            };
-          }
-        }
-
-        if (meta && meta.regularMarketPrice) {
-          return {
-            ticker: cleanTicker,
-            name: meta?.shortName || meta?.longName || cleanTicker,
-            price: Number(meta.regularMarketPrice.toFixed(2)),
-            type: isFii ? 'FII' : 'STOCK',
-            category: isFii ? 'FIIs' : 'Ações',
-          };
-        }
-      }
-
-      // Brapi fallback
-      const brapiRes = await fetch(`https://brapi.dev/api/quote/${cleanTicker}?token=free`);
-      if (brapiRes.ok) {
-        const bJson: any = await brapiRes.json();
-        if (bJson.results && bJson.results[0] && bJson.results[0].regularMarketPrice) {
-          const r = bJson.results[0];
-          const isFii = cleanTicker.endsWith('11') && !['TAEE11', 'KLBN11', 'SAPR11', 'ALUP11'].includes(cleanTicker);
-          return {
-            ticker: cleanTicker,
-            name: r.longName || r.shortName || cleanTicker,
-            price: Number(r.regularMarketPrice.toFixed(2)),
-            type: isFii ? 'FII' : 'STOCK',
-            category: isFii ? 'FIIs' : 'Ações',
-          };
-        }
-      }
-    }
-  } catch {}
+  // 3. Fallback seguro no catálogo local pré-carregado
+  const localMatch = POPULAR_TICKERS_CATALOG.find((m) => m.ticker === cleanTicker);
+  if (localMatch) {
+    return {
+      ticker: localMatch.ticker,
+      name: localMatch.name,
+      price: localMatch.defaultPrice,
+      type: localMatch.type,
+      category: localMatch.category,
+    };
+  }
 
   return null;
 }
