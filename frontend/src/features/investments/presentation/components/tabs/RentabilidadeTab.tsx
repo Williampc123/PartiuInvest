@@ -321,50 +321,50 @@ export const RentabilidadeTab: React.FC<RentabilidadeTabProps> = ({
   };
 
   return (
-    <div className="space-y-6 text-slate-200">
+    <div className="space-y-6 text-navy">
       {/* 1. SEÇÃO SUPERIOR: CARDS + GRÁFICO COMPARATIVO COM ÍNDICES */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Lado Esquerdo: 3 Cards */}
         <div className="lg:col-span-3 space-y-3 flex flex-col justify-between">
           {/* Card 1: Rentabilidade Total */}
-          <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-white font-bold block">Rentabilidade total</span>
+          <div className="rounded-2xl bg-white/85 border border-white/95 p-4 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)] flex flex-col justify-between">
+            <span className="text-xs text-navy font-black block">Rentabilidade total</span>
             <div className="my-2">
-              <span className="text-[10px] text-slate-400 block font-medium">Rentabilidade</span>
+              <span className="text-[10px] text-muted block font-bold">Rentabilidade</span>
               <div
                 className={`text-2xl font-black tracking-tight flex items-center gap-1.5 ${
-                  realTotalReturnPct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  realTotalReturnPct >= 0 ? 'text-ok' : 'text-danger'
                 }`}
               >
                 <span>{hideValues ? '••••••' : `${realTotalReturnPct.toFixed(2).replace('.', ',')}%`}</span>
                 <span className="text-sm">{realTotalReturnPct >= 0 ? '↗' : '↘'}</span>
               </div>
             </div>
-            <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-2">
+            <div className="text-[11px] text-muted flex items-center justify-between border-t border-navy/10 pt-2 font-semibold">
               <span>
                 {hasData
                   ? `${Math.abs(diffCdi).toFixed(2)}% ${diffCdi >= 0 ? 'acima' : 'abaixo'} do CDI`
                   : '0,00% vs CDI'}
               </span>
-              <ChevronDown className="h-3 w-3 text-slate-500" />
+              <ChevronDown className="h-3 w-3 text-muted" />
             </div>
           </div>
 
           {/* Card 2: Últimos 12 meses */}
-          <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 shadow-sm flex flex-col justify-between">
-            <span className="text-xs text-white font-bold block">Últimos 12 meses</span>
+          <div className="rounded-2xl bg-white/85 border border-white/95 p-4 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)] flex flex-col justify-between">
+            <span className="text-xs text-navy font-black block">Últimos 12 meses</span>
             <div className="my-2">
-              <span className="text-[10px] text-slate-400 block font-medium">Rentabilidade</span>
+              <span className="text-[10px] text-muted block font-bold">Rentabilidade</span>
               <div
                 className={`text-2xl font-black tracking-tight flex items-center gap-1.5 ${
-                  real12mReturnPct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  real12mReturnPct >= 0 ? 'text-ok' : 'text-danger'
                 }`}
               >
                 <span>{hideValues ? '••••••' : `${real12mReturnPct.toFixed(2).replace('.', ',')}%`}</span>
                 <span className="text-sm">{real12mReturnPct >= 0 ? '↗' : '↘'}</span>
               </div>
             </div>
-            <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-2">
+            <div className="text-[11px] text-muted flex items-center justify-between border-t border-navy/10 pt-2 font-semibold">
               <span>
                 {hasData
                   ? `${Math.abs(real12mReturnPct - cdi12m).toFixed(2)}% ${
@@ -372,81 +372,81 @@ export const RentabilidadeTab: React.FC<RentabilidadeTabProps> = ({
                     } do CDI`
                   : '0,00% vs CDI'}
               </span>
-              <ChevronDown className="h-3 w-3 text-slate-500" />
+              <ChevronDown className="h-3 w-3 text-muted" />
             </div>
           </div>
 
           {/* Card 3: Último mês */}
-          <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center gap-1 text-xs text-white font-bold">
+          <div className="rounded-2xl bg-white/85 border border-white/95 p-4 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)] flex flex-col justify-between">
+            <div className="flex items-center gap-1 text-xs text-navy font-black">
               <span>Último mês</span>
-              <Info className="h-3 w-3 text-slate-400" />
+              <Info className="h-3 w-3 text-muted" />
             </div>
             <div className="my-2">
-              <span className="text-[10px] text-slate-400 block font-medium">Rentabilidade</span>
+              <span className="text-[10px] text-muted block font-bold">Rentabilidade</span>
               <div
                 className={`text-2xl font-black tracking-tight flex items-center gap-1.5 ${
-                  realLastMonthReturnPct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  realLastMonthReturnPct >= 0 ? 'text-ok' : 'text-danger'
                 }`}
               >
                 <span>{hideValues ? '••••••' : `${realLastMonthReturnPct.toFixed(2).replace('.', ',')}%`}</span>
                 <span className="text-sm">{realLastMonthReturnPct >= 0 ? '↗' : '↘'}</span>
               </div>
             </div>
-            <div className="text-[11px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-2">
+            <div className="text-[11px] text-muted flex items-center justify-between border-t border-navy/10 pt-2 font-semibold">
               <span>{hasData ? 'Rentabilidade mensal' : 'Sem movimentação no mês'}</span>
-              <ChevronDown className="h-3 w-3 text-slate-500" />
+              <ChevronDown className="h-3 w-3 text-muted" />
             </div>
           </div>
         </div>
 
         {/* Lado Direito: Gráfico de Comparação com Índices */}
-        <div className="lg:col-span-9 rounded-2xl bg-[#141A26] border border-[#212B3E] p-5 shadow-sm flex flex-col justify-between">
+        <div className="lg:col-span-9 rounded-2xl bg-white/85 border border-white/95 p-5 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)] flex flex-col justify-between">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h3 className="text-sm font-black text-white">Rentabilidade comparada com índices</h3>
+              <h3 className="text-sm font-black text-navy">Rentabilidade comparada com índices</h3>
 
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#1A2234] border border-[#27344D] text-xs font-semibold text-slate-300">
-                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-navy/10 text-xs font-bold text-navy shadow-xs">
+                  <Calendar className="h-3.5 w-3.5 text-muted" />
                   <span>Desde o início</span>
-                  <ChevronDown className="h-3 w-3 text-slate-400" />
+                  <ChevronDown className="h-3 w-3 text-muted" />
                 </div>
 
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#1A2234] border border-[#27344D] text-xs font-semibold text-slate-300">
-                  <Layers className="h-3.5 w-3.5 text-slate-400" />
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-navy/10 text-xs font-bold text-navy shadow-xs">
+                  <Layers className="h-3.5 w-3.5 text-muted" />
                   <span>Todos os tipos</span>
-                  <ChevronDown className="h-3 w-3 text-slate-400" />
+                  <ChevronDown className="h-3 w-3 text-muted" />
                 </div>
               </div>
             </div>
 
             {/* Legenda de Índices */}
-            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-300 mb-4">
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-navy mb-4">
               <button
                 type="button"
                 onClick={() => toggleIndex('rentabilidade')}
-                className="flex items-center gap-1.5 cursor-pointer text-indigo-400 font-bold"
+                className="flex items-center gap-1.5 cursor-pointer text-navy font-black"
               >
-                <span className="h-2 w-2 rounded-full bg-indigo-400" />
+                <span className="h-2 w-2 rounded-full bg-navy" />
                 <span>Rentabilidade ({realTotalReturnPct.toFixed(2)}%)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => toggleIndex('cdi')}
-                className="flex items-center gap-1.5 cursor-pointer text-amber-400 font-bold"
+                className="flex items-center gap-1.5 cursor-pointer text-gold-deep font-bold"
               >
-                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                <span className="h-2 w-2 rounded-full bg-gold" />
                 <span>CDI (10.40%)</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => toggleIndex('ipca')}
-                className={`flex items-center gap-1.5 cursor-pointer ${activeIndices.ipca ? 'text-teal-400 font-bold' : 'text-slate-400'}`}
+                className={`flex items-center gap-1.5 cursor-pointer ${activeIndices.ipca ? 'text-ok font-bold' : 'text-muted'}`}
               >
-                <span className="h-2 w-2 rounded-full bg-teal-400" />
+                <span className="h-2 w-2 rounded-full bg-ok" />
                 <span>IPCA</span>
               </button>
 
@@ -552,17 +552,17 @@ export const RentabilidadeTab: React.FC<RentabilidadeTabProps> = ({
       </div>
 
       {/* 2. TABELA INFERIOR: RENTABILIDADE AO LONGO DOS ANOS */}
-      <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-[#212B3E] flex items-center justify-between">
-          <h3 className="text-base font-black text-white">Rentabilidade</h3>
-          <span className="text-xs text-slate-400 font-medium">
+      <div className="rounded-2xl bg-white/85 border border-white/95 overflow-hidden shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.10)]">
+        <div className="p-4 border-b border-navy/10 flex items-center justify-between bg-slate-50/50">
+          <h3 className="text-base font-black text-navy">Rentabilidade</h3>
+          <span className="text-xs text-muted font-bold">
             {hasData ? `${transactions.length} lançamentos consolidados` : '0 lançamentos'}
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-center text-xs text-slate-300">
-            <thead className="bg-[#101520] uppercase text-[10px] text-slate-400 font-bold border-b border-white/5">
+          <table className="w-full text-center text-xs text-navy whitespace-nowrap">
+            <thead className="bg-slate-100/60 uppercase text-[10px] text-muted font-bold border-b border-navy/10">
               <tr>
                 <th className="py-3 px-4 text-left font-sans">Ano</th>
                 <th className="py-3 px-2">Jan</th>
@@ -577,14 +577,14 @@ export const RentabilidadeTab: React.FC<RentabilidadeTabProps> = ({
                 <th className="py-3 px-2">Out</th>
                 <th className="py-3 px-2">Nov</th>
                 <th className="py-3 px-2">Dez</th>
-                <th className="py-3 px-3 font-bold text-slate-200">Retorno anual</th>
-                <th className="py-3 px-4 font-black text-white">Acumulado</th>
+                <th className="py-3 px-3 font-bold text-navy">Retorno anual</th>
+                <th className="py-3 px-4 font-black text-navy">Acumulado</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5 font-mono text-xs">
+            <tbody className="divide-y divide-navy/5 font-mono text-xs">
               {rentabilidadeMatrix.map((r) => (
-                <tr key={r.ano} className="hover:bg-white/5 transition">
-                  <td className="py-3.5 px-4 text-left font-bold text-white font-sans text-xs">
+                <tr key={r.ano} className="hover:bg-navy/[0.03] transition">
+                  <td className="py-3.5 px-4 text-left font-black text-navy font-sans text-xs">
                     {r.ano}
                   </td>
                   <td className="py-3.5 px-2">{renderCell(r.jan)}</td>
@@ -599,10 +599,10 @@ export const RentabilidadeTab: React.FC<RentabilidadeTabProps> = ({
                   <td className="py-3.5 px-2">{renderCell(r.out)}</td>
                   <td className="py-3.5 px-2">{renderCell(r.nov)}</td>
                   <td className="py-3.5 px-2">{renderCell(r.dez)}</td>
-                  <td className="py-3.5 px-3 font-bold text-emerald-400 font-sans">
+                  <td className="py-3.5 px-3 font-bold text-ok font-sans">
                     {hideValues ? '••••' : r.retornoAnual}
                   </td>
-                  <td className="py-3.5 px-4 font-black text-white font-sans">
+                  <td className="py-3.5 px-4 font-black text-navy font-sans">
                     {hideValues ? '••••' : r.acumulado}
                   </td>
                 </tr>

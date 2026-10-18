@@ -25,6 +25,7 @@ import {
   orderBy,
   onSnapshot,
 } from 'firebase/firestore';
+import { KNOWN_DIVIDENDS_CATALOG, getCustodyOnDate } from './dividendService';
 
 export interface InvestmentGoal {
   id: string;
@@ -622,7 +623,8 @@ export function computePortfolioPositions(
     let vacancy = 0;
     let sector = 'Geral';
 
-    const knownAssetMetrics: Record<string, { price?: number; dy?: number; pvp?: number; vacancy?: number }> = {
+    // Fallback de métricas para quando a API de cotação não retornar indicadores secundários
+    const fallbackAssetMetrics: Record<string, { price?: number; dy?: number; pvp?: number; vacancy?: number }> = {
       BBAS3: { price: 21.61, dy: 3.16, pvp: 0.78 },
       BBDC3: { price: 15.76, dy: 8.97, pvp: 0.98 },
       BBDC4: { price: 17.83, dy: 8.70, pvp: 1.05 },
@@ -668,12 +670,16 @@ export function computePortfolioPositions(
         vacancy = foundMarket.vacancy || 0;
         sector = foundMarket.sector || 'Geral';
       }
-      if (knownAssetMetrics[ticker]) {
-        const km = knownAssetMetrics[ticker];
-        if (km.dy !== undefined) dy = km.dy;
-        if (km.price !== undefined) currentPrice = km.price;
-        if (km.pvp !== undefined) pvp = km.pvp;
-        if (km.vacancy !== undefined) vacancy = km.vacancy;
+
+      // Aplica fallback apenas se faltar cotação ao vivo ou indicadores
+      if (fallbackAssetMetrics[ticker]) {
+        const fm = fallbackAssetMetrics[ticker];
+        if (dy === 0 && fm.dy !== undefined) dy = fm.dy;
+        if ((currentPrice === 0 || currentPrice === averagePrice) && fm.price !== undefined) {
+          currentPrice = fm.price;
+        }
+        if (pvp === 1.0 && fm.pvp !== undefined) pvp = fm.pvp;
+        if (vacancy === 0 && fm.vacancy !== undefined) vacancy = fm.vacancy;
       }
     }
 
@@ -681,60 +687,27 @@ export function computePortfolioPositions(
     const variationAmount = totalCurrentValue - item.totalCost;
     const variationPercentage = item.totalCost > 0 ? (variationAmount / item.totalCost) * 100 : 0;
 
-    // Proventos recebidos acumulados (da planilha/lançamentos ou histórico real do Investidor 10)
-    const knownDividends: Record<string, number> = {
-      CSMG3: 83.55,
-      PETR4: 84.51,
-      ITSA4: 112.40,
-      VALE3: 98.33,
-      GGBR3: 52.89,
-      LEVE3: 93.67,
-      CMIG4: 71.17,
-      BBSE3: 116.70,
-      BBAS3: 28.44,
-      BBDC4: 48.64,
-      BBDC3: 52.87,
-      TAEE11: 45.65,
-      RURA11: 184.80,
-      VISC11: 124.64,
-      SNAG11: 130.80,
-      XPML11: 133.40,
-      HGLG11: 147.40,
-      SNEL11: 106.00,
-      MXRF11: 104.00,
-      XPLG11: 123.00,
-      CACR11: 270.00,
-    };
-
-    const knownReturns: Record<string, number> = {
-      CSMG3: 168.20,
-      PETR4: 60.70,
-      ITSA4: 70.12,
-      VALE3: 38.83,
-      GGBR3: 32.88,
-      LEVE3: 30.10,
-      CMIG4: 9.50,
-      BBSE3: 48.12,
-      BBAS3: -16.22,
-      BBDC4: 42.80,
-      BBDC3: 46.11,
-      TAEE11: 37.46,
-      RURA11: 13.91,
-      VISC11: 18.06,
-      SNAG11: 17.58,
-      XPML11: 10.74,
-      HGLG11: 8.78,
-      SNEL11: 4.88,
-      MXRF11: 4.47,
-      XPLG11: 8.79,
-      CACR11: -67.57,
-    };
-
+    // Proventos recebidos: soma das transações reais e eventos de proventos com base na Data COM
     let receivedDividends = item.receivedDividends;
     if (receivedDividends <= 0 && item.quantity > 0) {
-      if (knownDividends[ticker] !== undefined) {
-        receivedDividends = knownDividends[ticker];
+      // 1. Tentar calcular exatamente a partir do catálogo oficial com Data COM
+      const knownEvents = KNOWN_DIVIDENDS_CATALOG[ticker] || [];
+      const todayIso = new Date().toISOString().slice(0, 10);
+      let calculatedFromCatalog = 0;
+
+      for (const ev of knownEvents) {
+        if (ev.paymentDate <= todayIso) {
+          const qtyOnCom = getCustodyOnDate(transactions, ticker, ev.dateCom);
+          if (qtyOnCom > 0) {
+            calculatedFromCatalog += qtyOnCom * ev.rate;
+          }
+        }
+      }
+
+      if (calculatedFromCatalog > 0) {
+        receivedDividends = Number(calculatedFromCatalog.toFixed(2));
       } else if (dy > 0) {
+        // Fallback secundário baseado no histórico de custódia
         let accumulatedFromHoldings = 0;
         for (const lot of item.buyLots) {
           const buyDate = new Date(lot.date);
@@ -749,12 +722,9 @@ export function computePortfolioPositions(
       }
     }
 
+    // Fórmula canônica Investidor 10: Lucro Total = Variação de Capital + Proventos Recebidos
     const profitAmount = variationAmount + receivedDividends;
-    const profitPercentage = knownReturns[ticker] !== undefined
-      ? knownReturns[ticker]
-      : item.totalCost > 0
-      ? (profitAmount / item.totalCost) * 100
-      : 0;
+    const profitPercentage = item.totalCost > 0 ? (profitAmount / item.totalCost) * 100 : 0;
 
     // Fórmula exata do Investidor 10: Yield On Cost = (currentPrice * (dy / 100) / averagePrice) * 100
     const yieldOnCost = averagePrice > 0 ? ((currentPrice * (dy / 100)) / averagePrice) * 100 : 0;
@@ -859,7 +829,8 @@ export function groupPositionsByClass(
   const classConfigs: Record<string, { name: string; icon: string; iconColor: string; color: string; targetPct: number }> = {
     STOCK: { name: 'Ações', icon: 'S', iconColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', color: '#34D399', targetPct: 20 },
     FII: { name: 'FIIs', icon: '🏢', iconColor: 'bg-purple-500/20 text-purple-400 border border-purple-500/30', color: '#C084FC', targetPct: 20 },
-    STOCK_US: { name: 'Stocks', icon: '🌎$', iconColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/30', color: '#FDBA74', targetPct: 20 },
+    BDR: { name: 'BDRs', icon: '🌎', iconColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/30', color: '#FDBA74', targetPct: 15 },
+    STOCK_US: { name: 'Stocks', icon: '🌎$', iconColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/30', color: '#FDBA74', targetPct: 15 },
     REIT: { name: 'Reits', icon: '🏢$', iconColor: 'bg-teal-500/20 text-teal-400 border border-teal-500/30', color: '#A7F3D0', targetPct: 10 },
     ETF: { name: 'ETFs', icon: '🌐', iconColor: 'bg-pink-500/20 text-pink-400 border border-pink-500/30', color: '#F472B6', targetPct: 10 },
     FIXED_INCOME: { name: 'Renda Fixa', icon: '📈', iconColor: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30', color: '#FDE68A', targetPct: 10 },
@@ -936,15 +907,8 @@ export function groupPositionsByClass(
   }
 
   return Object.values(groups).map((g) => {
-    let returnPct = g.totalCost > 0 ? (g.profitBrl / g.totalCost) * 100 : 0;
-    let variationPct = g.totalCost > 0 ? (g.variationBrl / g.totalCost) * 100 : 0;
-    if (g.id === 'stock' && g.count >= 10) {
-      returnPct = 63.35;
-      variationPct = 29.71;
-    } else if (g.id === 'fii' && g.count >= 8) {
-      returnPct = 10.69;
-      variationPct = -4.38;
-    }
+    const returnPct = g.totalCost > 0 ? (g.profitBrl / g.totalCost) * 100 : 0;
+    const variationPct = g.totalCost > 0 ? (g.variationBrl / g.totalCost) * 100 : 0;
     return {
       ...g,
       variationPct,

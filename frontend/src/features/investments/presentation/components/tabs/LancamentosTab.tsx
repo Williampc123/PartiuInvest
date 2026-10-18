@@ -68,17 +68,17 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
   );
 
   return (
-    <div className="space-y-6 text-slate-200">
+    <div className="space-y-6 text-navy">
       {/* 1. PAINEL SUPERIOR: CONSOLIDAÇÃO DE APORTES REAL */}
-      <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-5 shadow-sm">
+      <div className="rounded-2xl bg-white/85 border border-white/95 p-5 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)]">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <h3 className="text-sm font-black text-white">Consolidação de Aportes</h3>
+          <h3 className="text-sm font-black text-navy">Consolidação de Aportes</h3>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onOpenAddModal}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition active:scale-95 shadow"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl btn-gold font-bold text-xs transition active:scale-95 shadow-sm"
             >
               <Plus className="h-3.5 w-3.5" />
               <span>Novo Lançamento</span>
@@ -87,21 +87,21 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
         </div>
 
         {/* Legenda */}
-        <div className="flex items-center justify-center gap-6 text-xs text-slate-300 mb-6">
+        <div className="flex items-center justify-center gap-6 text-xs text-navy mb-6 font-bold">
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded bg-[#34D399]" />
-            <span>Compras</span>
+            <span className="h-3 w-3 rounded bg-ok" />
+            <span className="text-muted">Compras</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded bg-[#F87171]" />
-            <span>Vendas</span>
+            <span className="h-3 w-3 rounded bg-danger" />
+            <span className="text-muted">Vendas</span>
           </div>
         </div>
 
         {/* Gráfico de Barras */}
         {aportesData.length > 0 ? (
-          <div className="h-48 flex items-end justify-between gap-4 pt-4 pb-2 border-b border-white/5 px-4 relative">
-            <div className="absolute left-0 top-1/2 w-full h-[1px] bg-white/10" />
+          <div className="h-48 flex items-end justify-between gap-4 pt-4 pb-2 border-b border-navy/10 px-4 relative">
+            <div className="absolute left-0 top-1/2 w-full h-[1px] bg-navy/10" />
 
             {aportesData.map((d) => {
               const buyHeight = maxVal > 0 ? (d.buy / maxVal) * 80 : 0;
@@ -116,7 +116,7 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
                     {d.buy > 0 && (
                       <div
                         style={{ height: `${buyHeight}px` }}
-                        className="w-full rounded-t bg-[#34D399] group-hover:bg-[#4ADE80] transition shadow"
+                        className="w-full rounded-t bg-ok group-hover:bg-emerald-400 transition shadow-xs"
                       />
                     )}
                   </div>
@@ -125,12 +125,12 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
                     {d.sell < 0 && (
                       <div
                         style={{ height: `${sellHeight}px` }}
-                        className="w-full rounded-b bg-[#F87171] group-hover:bg-[#EF4444] transition shadow"
+                        className="w-full rounded-b bg-danger group-hover:bg-rose-400 transition shadow-xs"
                       />
                     )}
                   </div>
 
-                  <span className="text-[10px] text-slate-400 font-semibold absolute bottom-0">
+                  <span className="text-[10px] text-muted font-bold absolute bottom-0">
                     {d.label}
                   </span>
                 </div>
@@ -138,19 +138,19 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
             })}
           </div>
         ) : (
-          <div className="h-32 flex items-center justify-center text-slate-500 text-xs border border-dashed border-white/10 rounded-xl">
+          <div className="h-32 flex items-center justify-center text-muted text-xs border border-dashed border-navy/20 rounded-xl">
             Nenhum aporte registrado até o momento
           </div>
         )}
       </div>
 
       {/* 2. PAINEL INFERIOR: TABELA DE LANÇAMENTOS REAIS */}
-      <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] overflow-hidden shadow-sm">
+      <div className="rounded-2xl bg-white/85 border border-white/95 overflow-hidden shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.10)]">
         {/* Header da Tabela com Barra de Busca e Recolher */}
-        <div className="p-4 border-b border-[#212B3E] flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 border-b border-navy/10 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-black text-white">Extrato de Lançamentos</h3>
-            <span className="text-xs text-slate-400 font-medium">({filteredTxs.length})</span>
+            <h3 className="text-sm font-black text-navy">Extrato de Lançamentos</h3>
+            <span className="text-xs text-muted font-bold">({filteredTxs.length})</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -160,15 +160,15 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
                 placeholder="Buscar por ticker, nome ou corretora"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-[#101520] border border-[#212B3E] rounded-xl px-3.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-slate-400"
+                className="w-full bg-white border border-navy/15 rounded-xl px-3.5 py-1.5 text-xs text-navy placeholder-muted/60 focus:outline-none focus:border-navy/40 shadow-xs"
               />
-              <Search className="h-3.5 w-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2" />
+              <Search className="h-3.5 w-3.5 text-muted absolute right-3 top-1/2 -translate-y-1/2" />
             </div>
 
             <button
               type="button"
               onClick={() => setIsTableOpen(!isTableOpen)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
+              className="p-1.5 rounded-xl text-muted hover:text-navy hover:bg-navy/5 transition"
             >
               {isTableOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
@@ -179,8 +179,8 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
         {isTableOpen && (
           <div className="overflow-x-auto">
             {filteredTxs.length > 0 ? (
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-[#101520] uppercase text-[10px] text-slate-400 font-bold border-b border-white/5">
+              <table className="w-full text-left text-xs text-navy whitespace-nowrap">
+                <thead className="bg-slate-100/60 uppercase text-[10px] text-muted font-bold border-b border-navy/10">
                   <tr>
                     <th className="py-3 px-4">Ativo</th>
                     <th className="py-3 px-3">Tipo</th>
@@ -188,63 +188,63 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
                     <th className="py-3 px-3">Quantidade</th>
                     <th className="py-3 px-3">Preço Unitário</th>
                     <th className="py-3 px-3">Taxas</th>
-                    <th className="py-3 px-3 font-bold text-white">Total</th>
+                    <th className="py-3 px-3 font-bold text-navy">Total</th>
                     <th className="py-3 px-3">Data</th>
                     <th className="py-3 px-3">Instituição</th>
                     {onDeleteTransaction && <th className="py-3 px-4 text-right">Ação</th>}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 font-medium text-xs">
+                <tbody className="divide-y divide-navy/5 font-medium text-xs">
                   {filteredTxs.map((t) => {
                     const totalVal = t.quantity * t.price + (t.fees || 0);
                     return (
-                      <tr key={t.id} className="hover:bg-white/5 transition">
+                      <tr key={t.id} className="hover:bg-navy/[0.03] transition">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2.5">
-                            <div className="h-7 w-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center font-bold text-[10px] text-white">
+                            <div className="h-7 w-7 rounded-lg bg-navy/5 border border-navy/10 flex items-center justify-center font-bold text-[10px] text-gold-deep">
                               {t.ticker.slice(0, 4)}
                             </div>
                             <div>
-                              <span className="font-bold text-white text-xs block">{t.ticker}</span>
-                              {t.name && <span className="text-[10px] text-slate-400">{t.name}</span>}
+                              <span className="font-bold text-navy text-xs block">{t.ticker}</span>
+                              {t.name && <span className="text-[10px] text-muted">{t.name}</span>}
                             </div>
                           </div>
                         </td>
 
-                        <td className="py-3 px-3 text-slate-400">{t.type}</td>
+                        <td className="py-3 px-3 text-muted">{t.type}</td>
 
                         <td className="py-3 px-3">
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                               t.operation === 'BUY'
-                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                ? 'bg-ok/10 text-ok border border-ok/20'
                                 : t.operation === 'DIVIDEND'
-                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
-                                : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                                ? 'bg-gold/20 text-gold-deep border border-gold/30'
+                                : 'bg-danger/10 text-danger border border-danger/20'
                             }`}
                           >
                             {t.operation === 'BUY' ? 'Compra' : t.operation === 'DIVIDEND' ? 'Provento' : 'Venda'}
                           </span>
                         </td>
 
-                        <td className="py-3 px-3 font-bold text-slate-200">{t.quantity}</td>
+                        <td className="py-3 px-3 font-bold text-navy">{t.quantity}</td>
 
-                        <td className="py-3 px-3">{fmt(t.price)}</td>
+                        <td className="py-3 px-3 font-semibold text-navy">{fmt(t.price)}</td>
 
-                        <td className="py-3 px-3 text-slate-400">{fmt(t.fees || 0)}</td>
+                        <td className="py-3 px-3 text-muted">{fmt(t.fees || 0)}</td>
 
-                        <td className="py-3 px-3 font-bold text-white">{fmt(totalVal)}</td>
+                        <td className="py-3 px-3 font-black text-navy">{fmt(totalVal)}</td>
 
-                        <td className="py-3 px-3 text-slate-300">{t.date}</td>
+                        <td className="py-3 px-3 text-muted">{t.date}</td>
 
-                        <td className="py-3 px-3 text-slate-400">{t.broker || 'Custódia'}</td>
+                        <td className="py-3 px-3 text-muted">{t.broker || 'Custódia'}</td>
 
                         {onDeleteTransaction && (
                           <td className="py-3 px-4 text-right">
                             <button
                               type="button"
                               onClick={() => onDeleteTransaction(t.id)}
-                              className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                              className="p-1 rounded text-muted hover:text-danger hover:bg-danger/10 transition"
                               title="Excluir lançamento"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -257,7 +257,7 @@ export const LancamentosTab: React.FC<LancamentosTabProps> = ({
                 </tbody>
               </table>
             ) : (
-              <div className="p-8 text-center text-slate-500 text-xs">
+              <div className="p-8 text-center text-muted text-xs">
                 Nenhum lançamento encontrado. Cadastre suas compras para preencher a carteira.
               </div>
             )}

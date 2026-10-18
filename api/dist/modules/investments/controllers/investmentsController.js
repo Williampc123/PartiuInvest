@@ -9,6 +9,7 @@ exports.getCryptoKlines = getCryptoKlines;
 exports.getIndices = getIndices;
 exports.getAssets = getAssets;
 exports.getAssetQuote = getAssetQuote;
+exports.getAssetDividends = getAssetDividends;
 exports.uploadB3File = uploadB3File;
 exports.calculateTaxes = calculateTaxes;
 exports.analyzePortfolioAI = analyzePortfolioAI;
@@ -70,6 +71,20 @@ async function getAssetQuote(req, res) {
             return;
         }
         const data = await (0, marketDataService_js_1.getAssetDetails)(ticker, date);
+        res.json({ success: true, data });
+    }
+    catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+}
+async function getAssetDividends(req, res) {
+    try {
+        const ticker = req.params.ticker;
+        if (!ticker) {
+            res.status(400).json({ success: false, error: 'Ticker obrigatório' });
+            return;
+        }
+        const data = await (0, marketDataService_js_1.getAssetDividendsOnline)(ticker);
         res.json({ success: true, data });
     }
     catch (err) {

@@ -35,26 +35,40 @@ export const InvestidorHeader: React.FC<InvestidorHeaderProps> = ({
   ];
 
   return (
-    <header className="flex-shrink-0 bg-[#0F141C] border-b border-[#1E2638] text-white">
+    <header className="flex-shrink-0 bg-white/85 backdrop-blur-md border-b border-navy/10 text-navy shadow-sm">
       {/* Topo: Logo, Seletor de Carteira e Ações Globais */}
       <div className="flex items-center justify-between px-6 py-2.5">
         {/* Lado Esquerdo: Logo & Carteira */}
-        <div className="flex items-center gap-5">
-          {/* Logo Investidor10 estilizado */}
-          <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => onTabChange('resumo')}>
-            <span className="text-xl font-black tracking-tight text-white">Partiu</span>
-            <span className="text-xl font-black text-amber-400">Investidor</span>
+        <div className="flex items-center gap-4">
+          {/* Logo PartiuInvest oficial */}
+          <div
+            className="flex items-center gap-2 cursor-pointer select-none group"
+            onClick={() => onTabChange('resumo')}
+          >
+            <img
+              src="/icone-partiu-invest.png"
+              alt="PartiuInvest"
+              className="h-7 w-7 object-contain drop-shadow-sm group-hover:scale-105 transition-transform"
+            />
+            <div className="flex items-baseline">
+              <span className="text-xl font-black tracking-tight text-navy">Partiu</span>
+              <span className="text-xl font-black text-gold-deep">Invest</span>
+            </div>
+            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-navy/5 text-[10px] font-bold text-navy/70 border border-navy/10">
+              Investimentos
+            </span>
           </div>
 
           {/* Dropdown Carteira Padrão */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#161D2B] border border-[#232E44] text-xs font-semibold text-slate-200 hover:border-slate-500 transition cursor-pointer">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-navy/10 text-xs font-bold text-navy hover:border-navy/30 transition shadow-xs cursor-pointer">
+            <span className="h-2 w-2 rounded-full bg-ok animate-pulse" />
             <span>Carteira Padrão</span>
-            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+            <ChevronDown className="h-3.5 w-3.5 text-muted" />
           </div>
 
           <button
             type="button"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#1A2234] transition"
+            className="p-1.5 rounded-xl text-muted hover:text-navy hover:bg-navy/5 transition"
             title="Configurações da Carteira"
           >
             <Settings className="h-4 w-4" />
@@ -62,11 +76,11 @@ export const InvestidorHeader: React.FC<InvestidorHeaderProps> = ({
         </div>
 
         {/* Lado Direito: Ocultar Valores, Ajuda, Perfil e Fechar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onToggleHideValues}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-[#1A2234] transition"
+            className="p-2 text-muted hover:text-navy rounded-xl hover:bg-navy/5 border border-navy/10 transition"
             title={hideValues ? 'Mostrar Valores' : 'Ocultar Valores'}
           >
             {hideValues ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -74,16 +88,16 @@ export const InvestidorHeader: React.FC<InvestidorHeaderProps> = ({
 
           <button
             type="button"
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-[#1A2234] transition"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-muted hover:text-navy hover:bg-navy/5 border border-navy/10 transition"
           >
-            <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
+            <HelpCircle className="h-3.5 w-3.5 text-muted" />
             <span>Ajuda</span>
           </button>
 
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-xl bg-[#1F293D] hover:bg-rose-900/40 text-xs font-bold text-slate-300 hover:text-rose-400 transition"
+            className="px-3.5 py-1.5 rounded-xl bg-danger/10 hover:bg-danger/20 border border-danger/20 text-xs font-bold text-danger transition active:scale-95"
           >
             ✕ Fechar
           </button>
@@ -91,9 +105,9 @@ export const InvestidorHeader: React.FC<InvestidorHeaderProps> = ({
       </div>
 
       {/* Faixa de Abas & Botões de Ação */}
-      <div className="flex items-center justify-between px-6 pt-1 overflow-x-auto no-scrollbar gap-4">
-        {/* Abas idênticas ao Investidor10 */}
-        <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+      <div className="flex items-center justify-between px-6 pt-1 overflow-x-auto no-scrollbar gap-4 border-t border-navy/5 bg-navy/[0.015]">
+        {/* Abas estilizadas no padrão PartiuInvest */}
+        <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -101,16 +115,16 @@ export const InvestidorHeader: React.FC<InvestidorHeaderProps> = ({
                 key={tab.id}
                 type="button"
                 onClick={() => onTabChange(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium whitespace-nowrap transition border-b-2 relative ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   isActive
-                    ? 'border-white text-white font-bold'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    ? 'bg-navy text-white shadow-sm'
+                    : 'text-muted hover:text-navy hover:bg-navy/5'
                 }`}
               >
-                {isActive && <Check className="h-3 w-3 text-emerald-400" />}
+                {isActive && <Check className="h-3 w-3 text-gold" />}
                 <span>{tab.label}</span>
                 {tab.isProBadge && (
-                  <span className="flex items-center gap-0.5 rounded bg-amber-400/20 text-amber-300 px-1 py-0.2 text-[9px] font-black border border-amber-400/30">
+                  <span className="flex items-center gap-0.5 rounded-full bg-gold/20 text-gold-deep px-1.5 py-0.2 text-[9px] font-black border border-gold/30">
                     <Sparkles className="h-2 w-2" />
                   </span>
                 )}
@@ -120,22 +134,22 @@ export const InvestidorHeader: React.FC<InvestidorHeaderProps> = ({
         </nav>
 
         {/* Botões do Topo Direito */}
-        <div className="flex items-center gap-2.5 shrink-0 pb-1.5">
+        <div className="flex items-center gap-2 shrink-0 py-1">
           <button
             type="button"
             onClick={onOpenB3Integration}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#161D2B] hover:bg-[#1E273A] border border-[#27344D] text-xs font-semibold text-slate-200 transition"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-navy/5 border border-navy/15 text-xs font-bold text-navy transition shadow-xs active:scale-95"
           >
-            <span className="font-black text-amber-400 text-xs">[B]³</span>
+            <span className="font-black text-gold-deep text-xs">[B]³</span>
             <span>Integração B3</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenNewTransaction}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1A2234] hover:bg-[#232E44] border border-[#2E3C56] text-xs font-bold text-white transition active:scale-95 shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl btn-gold text-xs font-bold transition active:scale-95 shadow-sm"
           >
-            <Plus className="h-3.5 w-3.5 text-slate-300" />
+            <Plus className="h-3.5 w-3.5" />
             <span>Adicionar Lançamento</span>
           </button>
         </div>

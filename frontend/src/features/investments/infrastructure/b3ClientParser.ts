@@ -231,6 +231,15 @@ export async function parseB3FileClient(file: File): Promise<InvestmentTransacti
 
     if (ticker && (quantity > 0 || price > 0)) {
       const assetType = detectAssetType(ticker);
+      const isDiv = opStr === 'DIVIDEND';
+      const divType = isDiv
+        ? rowStr.toLowerCase().includes('jcp') || rowStr.toLowerCase().includes('juros')
+          ? 'JCP'
+          : rowStr.toLowerCase().includes('rendimento')
+          ? 'Rendimento'
+          : 'Dividendo'
+        : undefined;
+
       transactions.push({
         id: `b3_${Date.now()}_${i}`,
         date: dateStr || new Date().toISOString().split('T')[0],
@@ -241,6 +250,8 @@ export async function parseB3FileClient(file: File): Promise<InvestmentTransacti
         price: price > 0 ? price : 1,
         broker,
         name: ticker,
+        dividendType: divType,
+        paymentDate: isDiv ? dateStr : undefined,
       });
     }
   }

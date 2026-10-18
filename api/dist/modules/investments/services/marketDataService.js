@@ -10,6 +10,7 @@ exports.getBinanceKlines = getBinanceKlines;
 exports.getMacroRates = getMacroRates;
 exports.getMarketAssetsList = getMarketAssetsList;
 exports.getAssetDetails = getAssetDetails;
+exports.getAssetDividendsOnline = getAssetDividendsOnline;
 const memoryCache = new Map();
 function getCached(key) {
     const item = memoryCache.get(key);
@@ -26,6 +27,21 @@ function setCached(key, data, ttlMs = 120_000) {
         data,
         expiresAt: Date.now() + ttlMs,
     });
+}
+function getFallbackCryptos() {
+    const usdToBrl = 5.45;
+    return [
+        { symbol: 'BTCUSDT', ticker: 'BTC', name: 'Bitcoin', icon: '₿', priceUsd: 65000, priceBrl: 65000 * usdToBrl, change24h: 1.25, high24h: 66000, low24h: 64000, volumeUsd: 25000000000, market: 'CRYPTO' },
+        { symbol: 'ETHUSDT', ticker: 'ETH', name: 'Ethereum', icon: 'Ξ', priceUsd: 3500, priceBrl: 3500 * usdToBrl, change24h: 0.85, high24h: 3600, low24h: 3450, volumeUsd: 12000000000, market: 'CRYPTO' },
+        { symbol: 'SOLUSDT', ticker: 'SOL', name: 'Solana', icon: '◎', priceUsd: 150, priceBrl: 150 * usdToBrl, change24h: 3.4, high24h: 155, low24h: 145, volumeUsd: 3500000000, market: 'CRYPTO' },
+        { symbol: 'BNBUSDT', ticker: 'BNB', name: 'BNB', icon: '🟡', priceUsd: 580, priceBrl: 580 * usdToBrl, change24h: -0.5, high24h: 590, low24h: 575, volumeUsd: 1100000000, market: 'CRYPTO' },
+        { symbol: 'XRPUSDT', ticker: 'XRP', name: 'XRP', icon: '✕', priceUsd: 0.55, priceBrl: 0.55 * usdToBrl, change24h: 2.1, high24h: 0.58, low24h: 0.54, volumeUsd: 900000000, market: 'CRYPTO' },
+        { symbol: 'ADAUSDT', ticker: 'ADA', name: 'Cardano', icon: '₳', priceUsd: 0.45, priceBrl: 0.45 * usdToBrl, change24h: 1.1, high24h: 0.47, low24h: 0.44, volumeUsd: 400000000, market: 'CRYPTO' },
+        { symbol: 'DOGEUSDT', ticker: 'DOGE', name: 'Dogecoin', icon: 'Ð', priceUsd: 0.12, priceBrl: 0.12 * usdToBrl, change24h: 4.5, high24h: 0.13, low24h: 0.11, volumeUsd: 800000000, market: 'CRYPTO' },
+        { symbol: 'AVAXUSDT', ticker: 'AVAX', name: 'Avalanche', icon: '🔺', priceUsd: 28, priceBrl: 28 * usdToBrl, change24h: -1.2, high24h: 29.5, low24h: 27.5, volumeUsd: 350000000, market: 'CRYPTO' },
+        { symbol: 'LINKUSDT', ticker: 'LINK', name: 'Chainlink', icon: '🔗', priceUsd: 14, priceBrl: 14 * usdToBrl, change24h: 0.9, high24h: 14.5, low24h: 13.8, volumeUsd: 250000000, market: 'CRYPTO' },
+        { symbol: 'DOTUSDT', ticker: 'DOT', name: 'Polkadot', icon: '●', priceUsd: 6.5, priceBrl: 6.5 * usdToBrl, change24h: -0.8, high24h: 6.7, low24h: 6.3, volumeUsd: 180000000, market: 'CRYPTO' },
+    ];
 }
 // 1. Criptomoedas via Binance API Pública (100% gratuita, sem API key)
 async function getBinanceCryptos() {
@@ -323,10 +339,13 @@ async function getAssetDetails(ticker, targetDateStr) {
             catch (err) {
                 console.warn(`[marketDataService] Yahoo ao vivo falhou para ${cleanTicker}, tentando fallback...`);
             }
-            // 2. Fallback Brapi
+            // 2. Fallback Brapi (Apenas se o Yahoo Finance e fontes públicas falharem)
             if (livePrice === null) {
                 try {
-                    const brapiUrl = `https://brapi.dev/api/quote/${cleanTicker}?token=free`;
+                    const brapiToken = process.env.BRAPI_API_TOKEN || '';
+                    const brapiUrl = brapiToken
+                        ? `https://brapi.dev/api/quote/${cleanTicker}?token=${brapiToken}`
+                        : `https://brapi.dev/api/quote/${cleanTicker}?token=free`;
                     const brapiRes = await fetch(brapiUrl, { signal: AbortSignal.timeout(3000) });
                     if (brapiRes.ok) {
                         const bJson = await brapiRes.json();
@@ -400,11 +419,158 @@ async function getUsdRate() {
     catch { }
     return 5.45;
 }
-function getFallbackCryptos() {
-    return [
-        { symbol: 'BTCUSDT', ticker: 'BTC', name: 'Bitcoin', icon: '₿', priceUsd: 64200, priceBrl: 349890, change24h: 2.45, high24h: 65100, low24h: 63200, volumeUsd: 28940000000, market: 'CRYPTO' },
-        { symbol: 'ETHUSDT', ticker: 'ETH', name: 'Ethereum', icon: 'Ξ', priceUsd: 3450, priceBrl: 18802, change24h: 1.82, high24h: 3520, low24h: 3380, volumeUsd: 14200000000, market: 'CRYPTO' },
-        { symbol: 'SOLUSDT', ticker: 'SOL', name: 'Solana', icon: '◎', priceUsd: 152.80, priceBrl: 832.76, change24h: 4.15, high24h: 156.4, low24h: 147.0, volumeUsd: 4120000000, market: 'CRYPTO' },
-        { symbol: 'BNBUSDT', ticker: 'BNB', name: 'BNB', icon: '🟡', priceUsd: 590.20, priceBrl: 3216.59, change24h: -0.45, high24h: 598.0, low24h: 585.0, volumeUsd: 1200000000, market: 'CRYPTO' },
-    ];
+// Proventos Históricos e Futuros buscados na Internet (Fontes Independentes: Brapi, Yahoo Finance, StatusInvest)
+async function getAssetDividendsOnline(ticker) {
+    const cleanTicker = ticker.trim().toUpperCase();
+    const cacheKey = `dividends_online_${cleanTicker}`;
+    const cached = getCached(cacheKey);
+    if (cached)
+        return cached;
+    const results = [];
+    // 1. Provedor Independente 1: Fundamentus (Dados Oficiais e Abertos de Proventos da B3)
+    try {
+        const isFii = cleanTicker.endsWith('11') && !['TAEE11', 'KLBN11', 'SAPR11', 'ALUP11', 'ENGI11', 'SANB11', 'BPAC11'].includes(cleanTicker);
+        const fundUrl = isFii
+            ? `https://www.fundamentus.com.br/fii_proventos.php?papel=${cleanTicker}&tipo=2`
+            : `https://www.fundamentus.com.br/proventos.php?papel=${cleanTicker}&tipo=2`;
+        const fRes = await fetch(fundUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+            },
+            signal: AbortSignal.timeout(5000),
+        });
+        if (fRes.ok) {
+            const html = await fRes.text();
+            const rowRegex = /<tr[^>]*>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>\s*<td[^>]*>(.*?)<\/td>/gis;
+            let match;
+            while ((match = rowRegex.exec(html)) !== null) {
+                let dateComRaw = match[1].replace(/<[^>]+>/g, '').trim();
+                let valRaw = match[2].replace(/<[^>]+>/g, '').replace(/\s/g, '').replace(',', '.').trim();
+                let typeRaw = match[3].replace(/<[^>]+>/g, '').trim().toUpperCase();
+                let paymentDateRaw = match[4].replace(/<[^>]+>/g, '').trim();
+                if (isFii) {
+                    dateComRaw = match[1].replace(/<[^>]+>/g, '').trim();
+                    typeRaw = match[2].replace(/<[^>]+>/g, '').trim().toUpperCase();
+                    paymentDateRaw = match[3].replace(/<[^>]+>/g, '').trim();
+                    valRaw = match[4].replace(/<[^>]+>/g, '').replace(/\s/g, '').replace(',', '.').trim();
+                }
+                const rate = parseFloat(valRaw);
+                if (!isNaN(rate) && rate > 0) {
+                    const parseDate = (dStr) => {
+                        if (!dStr || dStr === '-')
+                            return '';
+                        if (dStr.includes('/')) {
+                            const [d, m, y] = dStr.split('/');
+                            if (d && m && y)
+                                return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                        }
+                        return dStr;
+                    };
+                    const dateCom = parseDate(dateComRaw);
+                    const paymentDate = parseDate(paymentDateRaw) || dateCom;
+                    if (dateCom) {
+                        const isJcp = typeRaw.includes('J') || typeRaw.includes('JCP') || typeRaw.includes('PROPRIO');
+                        const type = isJcp ? 'JCP' : isFii ? 'Rendimento' : 'Dividendo';
+                        results.push({
+                            ticker: cleanTicker,
+                            type,
+                            dateCom,
+                            paymentDate: paymentDate || dateCom,
+                            rate,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    catch (err) {
+        console.warn(`[marketDataService] Fundamentus proventos falhou para ${cleanTicker}:`, err);
+    }
+    // 2. Provedor Aberto 2: Yahoo Finance API (Séries públicas globais de dividendos para B3 e US)
+    if (results.length === 0) {
+        try {
+            const isUsOrEtf = /^[A-Z]{3,5}$/.test(cleanTicker) && !cleanTicker.endsWith('11') && !/\d/.test(cleanTicker);
+            const ySymbol = isUsOrEtf ? cleanTicker : cleanTicker.includes('.') ? cleanTicker : `${cleanTicker}.SA`;
+            const yUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ySymbol}?range=5y&interval=1mo&events=div`;
+            const yRes = await fetch(yUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                },
+                signal: AbortSignal.timeout(4500),
+            });
+            if (yRes.ok) {
+                const yJson = await yRes.json();
+                const dividendsObj = yJson.chart?.result?.[0]?.events?.dividends;
+                if (dividendsObj && typeof dividendsObj === 'object') {
+                    const divEntries = Object.values(dividendsObj);
+                    for (const item of divEntries) {
+                        const amount = parseFloat(item.amount);
+                        if (!isNaN(amount) && amount > 0 && item.date) {
+                            const dt = new Date(item.date * 1000).toISOString().slice(0, 10);
+                            results.push({
+                                ticker: cleanTicker,
+                                type: cleanTicker.endsWith('11') ? 'Rendimento' : 'Dividendo',
+                                dateCom: dt,
+                                paymentDate: dt,
+                                rate: amount,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.warn(`[marketDataService] Yahoo Finance dividends falhou para ${cleanTicker}:`, err);
+        }
+    }
+    // 3. Provedor Aberto 3: StatusInvest Public API (Dados públicos de proventos da B3)
+    if (results.length === 0) {
+        try {
+            const isFii = cleanTicker.endsWith('11');
+            const sUrl = isFii
+                ? `https://statusinvest.com.br/fii/companytickerprovents?ticker=${cleanTicker}`
+                : `https://statusinvest.com.br/acao/companytickerprovents?ticker=${cleanTicker}`;
+            const sRes = await fetch(sUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                },
+                signal: AbortSignal.timeout(4500),
+            });
+            if (sRes.ok) {
+                const sJson = await sRes.json();
+                const assetDividends = Array.isArray(sJson) ? sJson : sJson.assetExpenses || [];
+                for (const item of assetDividends) {
+                    const val = parseFloat(item.v || item.value || item.resultAbsoluteValue);
+                    if (!isNaN(val) && val > 0) {
+                        const parseDate = (str) => {
+                            if (!str)
+                                return '';
+                            if (str.includes('/')) {
+                                const [d, m, y] = str.split('/');
+                                return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+                            }
+                            return str.slice(0, 10);
+                        };
+                        const dateCom = parseDate(item.ed || item.dateCom);
+                        const paymentDate = parseDate(item.pd || item.paymentDate) || dateCom;
+                        results.push({
+                            ticker: cleanTicker,
+                            type: item.et === 'JCP' ? 'JCP' : isFii ? 'Rendimento' : 'Dividendo',
+                            dateCom,
+                            paymentDate,
+                            rate: val,
+                        });
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.warn(`[marketDataService] StatusInvest dividends falhou para ${cleanTicker}:`, err);
+        }
+    }
+    // Ordenar decrescente por data
+    results.sort((a, b) => (a.paymentDate < b.paymentDate ? 1 : -1));
+    setCached(cacheKey, results, 300_000); // 5 min de cache
+    return results;
 }

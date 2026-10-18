@@ -58,6 +58,33 @@ export interface InvestmentTransaction {
   fees?: number;
   broker?: string;
   notes?: string;
+  // Campos específicos de proventos (Investidor10 style)
+  dividendType?: 'Dividendo' | 'JCP' | 'Rendimento' | 'Bonificação';
+  dateCom?: string;
+  paymentDate?: string;
+}
+
+export interface AssetDividendEvent {
+  ticker: string;
+  type: 'Dividendo' | 'JCP' | 'Rendimento' | 'Bonificação' | string;
+  dateCom: string; // formato YYYY-MM-DD ou DD/MM/YYYY
+  paymentDate: string; // formato YYYY-MM-DD ou DD/MM/YYYY
+  rate: number; // valor por cota/ação
+}
+
+export interface PortfolioReceivedDividend {
+  id: string;
+  ticker: string;
+  name?: string;
+  assetType: AssetType;
+  type: string;
+  dateCom: string;
+  paymentDate: string;
+  rate: number;
+  quantityOnDateCom: number;
+  totalGross?: number;
+  totalAmount: number;
+  isPaid: boolean;
 }
 
 export interface PortfolioPosition {

@@ -44,25 +44,25 @@ export const AnaliseTab: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 text-slate-200">
-      {/* 1. BANNER SUPERIOR DE ANÁLISE INTELIGENTE (Idêntico à Imagem 2) */}
-      <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-5 shadow-sm flex items-start gap-4">
-        <div className="h-10 w-10 rounded-xl bg-[#1C2538] border border-[#2B3852] flex items-center justify-center text-slate-300 shrink-0 mt-0.5">
+    <div className="space-y-6 text-navy">
+      {/* 1. BANNER SUPERIOR DE ANÁLISE INTELIGENTE */}
+      <div className="rounded-2xl bg-white/85 border border-white/95 p-5 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)] flex items-start gap-4">
+        <div className="h-10 w-10 rounded-xl bg-navy/5 border border-navy/10 flex items-center justify-center text-navy shrink-0 mt-0.5 shadow-xs">
           <Bot className="h-5 w-5" />
         </div>
         <div>
-          <h3 className="text-sm font-black text-white">Análise inteligente de carteira</h3>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+          <h3 className="text-sm font-black text-navy">Análise inteligente de carteira</h3>
+          <p className="text-xs text-muted mt-1 leading-relaxed">
             Nossa análise inteligente da carteira consiste em trazer os melhores insights fundamentalistas para te auxiliar na gestão de seu portfólio de ativos. Tenha acesso rápido e fácil aos principais pontos de atenção para que possa fazer a melhor gestão possível de seus ativos.
           </p>
         </div>
       </div>
 
-      {/* 2. CARD PRINCIPAL: PONTOS DE ATENÇÃO (Faixa Marrom / Dourada no Topo) */}
-      <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] overflow-hidden shadow-sm">
-        {/* Faixa Marrom Superior */}
-        <div className="bg-[#3D260F] border-b border-[#5C3A17] px-5 py-3">
-          <h4 className="text-xs font-black text-amber-300 uppercase tracking-wider">Pontos de atenção</h4>
+      {/* 2. CARD PRINCIPAL: PONTOS DE ATENÇÃO */}
+      <div className="rounded-2xl bg-white/85 border border-white/95 overflow-hidden shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.10)]">
+        {/* Faixa Superior */}
+        <div className="bg-gold/15 border-b border-gold/30 px-5 py-3">
+          <h4 className="text-xs font-black text-gold-deep uppercase tracking-wider">Pontos de atenção</h4>
         </div>
 
         {/* Lista de Itens de Análise */}
@@ -74,8 +74,8 @@ export const AnaliseTab: React.FC = () => {
             return (
               <div
                 key={it.id}
-                className={`rounded-xl bg-[#0F141E] border border-[#1E2638] overflow-hidden transition ${
-                  isBlur ? 'filter blur-[3px] select-none opacity-50' : 'hover:border-[#2D3A54]'
+                className={`rounded-xl bg-slate-50/70 border border-navy/10 overflow-hidden transition ${
+                  isBlur ? 'filter blur-[3px] select-none opacity-50' : 'hover:border-navy/30'
                 }`}
               >
                 <div
@@ -84,15 +84,15 @@ export const AnaliseTab: React.FC = () => {
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-lg shrink-0">{it.icon}</span>
-                    <p className="text-xs font-semibold text-slate-200 leading-snug">{it.title}</p>
+                    <p className="text-xs font-bold text-navy leading-snug">{it.title}</p>
                   </div>
-                  <div className="text-slate-400 shrink-0">
+                  <div className="text-muted shrink-0">
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </div>
                 </div>
 
                 {isExpanded && !isBlur && (
-                  <div className="px-4 pb-4 pt-1 text-xs text-slate-400 border-t border-white/5 bg-[#0A0E17]">
+                  <div className="px-4 pb-4 pt-1 text-xs text-muted border-t border-navy/10 bg-white/60">
                     <p className="leading-relaxed">{it.details}</p>
                   </div>
                 )}
@@ -101,11 +101,11 @@ export const AnaliseTab: React.FC = () => {
           })}
 
           {!isUnlocked && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[2px]">
               <button
                 type="button"
                 onClick={() => setIsUnlocked(true)}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#00D084] hover:bg-[#00B875] text-slate-950 font-black text-xs shadow-2xl transition active:scale-95"
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl btn-gold text-xs font-bold shadow-2xl transition active:scale-95"
               >
                 <Lock className="h-4 w-4" />
                 <span>Desbloquear análise completa</span>
@@ -116,8 +116,8 @@ export const AnaliseTab: React.FC = () => {
       </div>
 
       {/* 3. RODAPÉ / DISCLAIMER LEGAL */}
-      <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 text-slate-400 text-xs flex items-start gap-3">
-        <ShieldCheck className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+      <div className="rounded-2xl bg-white/85 border border-white/95 p-4 text-muted text-xs flex items-start gap-3 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.10)]">
+        <ShieldCheck className="h-5 w-5 text-muted shrink-0 mt-0.5" />
         <p className="text-[11px] leading-relaxed">
           *Os insights acima não devem ser considerados como recomendações e também não existe qualquer análise humana em sua carteira, nosso sistema somente analisa os indicadores das empresas lhe trazendo pontos de alertas que o investidores Buy And Hold consideram importantes em suas análises.
         </p>

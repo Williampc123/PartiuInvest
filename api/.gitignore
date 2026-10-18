@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+dist/
+
+# Environment Variables & Secrets (CRÍTICO)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Logs & Temp
+*.log
+_test_auto_*

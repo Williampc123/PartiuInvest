@@ -247,16 +247,16 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
     .reduce((sum, t) => sum + t.quantity * t.price, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-navy">
       {/* Seletor de Modo: Conexão Direta vs Arquivo */}
-      <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+      <div className="flex items-center gap-3 border-b border-navy/10 pb-4">
         <button
           type="button"
           onClick={() => setActiveSubTab('FILE')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
             activeSubTab === 'FILE'
-              ? 'bg-gold text-navy-deep shadow-md'
-              : 'bg-navy-deep text-slate-300 hover:text-white border border-white/10'
+              ? 'bg-navy text-white shadow-md'
+              : 'bg-white/80 text-muted hover:text-navy border border-navy/10'
           }`}
         >
           <FileSpreadsheet className="h-4 w-4" />
@@ -268,8 +268,8 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
           onClick={() => setActiveSubTab('SYNC')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
             activeSubTab === 'SYNC'
-              ? 'bg-gold text-navy-deep shadow-md'
-              : 'bg-navy-deep text-slate-300 hover:text-white border border-white/10'
+              ? 'bg-navy text-white shadow-md'
+              : 'bg-white/80 text-muted hover:text-navy border border-navy/10'
           }`}
         >
           <Link2 className="h-4 w-4" />
@@ -279,36 +279,36 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
 
       {activeSubTab === 'SYNC' ? (
         /* Modo Conexão Direta via Link B3 */
-        <div className="rounded-2xl bg-navy-deep/80 border border-white/10 p-8 text-center space-y-6">
-          <div className="mx-auto h-16 w-16 rounded-full bg-blue/20 border border-blue/40 flex items-center justify-center text-blue-light">
-            <Building2 className="h-8 w-8 text-gold" />
+        <div className="rounded-2xl bg-white/85 border border-white/95 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)] p-8 text-center space-y-6">
+          <div className="mx-auto h-16 w-16 rounded-full bg-gold/15 border border-gold/30 flex items-center justify-center text-gold-deep">
+            <Building2 className="h-8 w-8 text-gold-deep" />
           </div>
 
           <div className="max-w-md mx-auto space-y-2">
             <div className="flex items-center justify-center gap-2">
-              <h3 className="text-lg font-black text-white">Sincronização Direta com a B3</h3>
-              <span className="rounded bg-gold px-2 py-0.5 text-[9px] font-black text-navy-deep uppercase">PRO</span>
+              <h3 className="text-lg font-black text-navy">Sincronização Direta com a B3</h3>
+              <span className="rounded bg-gold px-2 py-0.5 text-[9px] font-black text-navy uppercase">PRO</span>
             </div>
-            <p className="text-xs text-slate-300">
+            <p className="text-xs text-muted">
               Conecte sua conta oficial da <b>Área do Investidor B3</b> via protocolo seguro para sincronizar automaticamente todas as compras, vendas e proventos diários.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-xl mx-auto text-left">
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-              <ShieldCheck className="h-5 w-5 text-emerald-400 mb-1" />
-              <h4 className="text-xs font-bold text-white">100% Seguro</h4>
-              <p className="text-[11px] text-slate-400">Autenticação oficial via Gov.br / B3</p>
+            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-navy/10">
+              <ShieldCheck className="h-5 w-5 text-ok mb-1" />
+              <h4 className="text-xs font-bold text-navy">100% Seguro</h4>
+              <p className="text-[11px] text-muted">Autenticação oficial via Gov.br / B3</p>
             </div>
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-              <RefreshCw className="h-5 w-5 text-gold mb-1" />
-              <h4 className="text-xs font-bold text-white">Atualização Diária</h4>
-              <p className="text-[11px] text-slate-400">Ordens sincronizadas sem intervenção manual</p>
+            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-navy/10">
+              <RefreshCw className="h-5 w-5 text-gold-deep mb-1" />
+              <h4 className="text-xs font-bold text-navy">Atualização Diária</h4>
+              <p className="text-[11px] text-muted">Ordens sincronizadas sem intervenção manual</p>
             </div>
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
-              <TrendingUp className="h-5 w-5 text-blue-light mb-1" />
-              <h4 className="text-xs font-bold text-white">Proventos Automáticos</h4>
-              <p className="text-[11px] text-slate-400">Dividendos e JCP creditados na carteira</p>
+            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-navy/10">
+              <TrendingUp className="h-5 w-5 text-blue-600 mb-1" />
+              <h4 className="text-xs font-bold text-navy">Proventos Automáticos</h4>
+              <p className="text-[11px] text-muted">Dividendos e JCP creditados na carteira</p>
             </div>
           </div>
 
@@ -316,7 +316,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
             type="button"
             onClick={handleConnectB3Direct}
             disabled={isSyncingDirect}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-gold to-[#E2A11B] text-navy-deep font-black text-xs shadow-xl hover:from-gold-light hover:to-gold transition disabled:opacity-50"
+            className="btn-gold inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-xs shadow-md transition disabled:opacity-50"
           >
             {isSyncingDirect ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
             <span>Conectar com a B3 (Área do Investidor)</span>
@@ -326,17 +326,17 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
         /* Modo Upload de Arquivo */
         <div className="space-y-6">
           {/* Banner de Orientações */}
-          <div className="rounded-2xl bg-gradient-to-r from-blue/20 via-navy-soft to-navy-deep border border-blue/40 p-5 flex items-center justify-between">
+          <div className="rounded-2xl bg-gradient-to-r from-gold/15 via-white/80 to-white/90 border border-gold/30 p-5 flex items-center justify-between shadow-sm">
             <div className="flex items-center gap-3.5">
-              <div className="h-12 w-12 rounded-2xl bg-blue/20 border border-blue/40 flex items-center justify-center text-blue-light text-2xl font-black shrink-0">
+              <div className="h-12 w-12 rounded-2xl bg-gold/20 border border-gold/30 flex items-center justify-center text-gold-deep text-2xl font-black shrink-0">
                 📑
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-black text-white">Importador de Extratos da B3</h3>
-                  <span className="rounded bg-gold px-1.5 py-0.2 text-[9px] font-black text-navy-deep uppercase">PRO</span>
+                  <h3 className="text-base font-black text-navy">Importador de Extratos da B3</h3>
+                  <span className="rounded bg-gold px-1.5 py-0.2 text-[9px] font-black text-navy uppercase">PRO</span>
                 </div>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-muted">
                   Suporta arquivos de <b>Resumo de Negociação</b> e <b>Movimentação Detalhada</b> (.xlsx, .xls ou .csv) exportados da Área do Investidor B3.
                 </p>
               </div>
@@ -344,18 +344,18 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
           </div>
 
           {/* Área de Upload Drag & Drop */}
-          <div className="rounded-2xl border-2 border-dashed border-white/20 bg-navy-deep/60 p-8 text-center hover:border-gold/60 transition">
-            <div className="mx-auto h-16 w-16 rounded-full bg-gold/10 flex items-center justify-center text-gold mb-4">
+          <div className="rounded-2xl border-2 border-dashed border-navy/20 bg-white/60 p-8 text-center hover:border-gold-deep transition">
+            <div className="mx-auto h-16 w-16 rounded-full bg-gold/15 flex items-center justify-center text-gold-deep mb-4">
               <UploadCloud className="h-8 w-8" />
             </div>
-            <h4 className="text-base font-bold text-white mb-1">
+            <h4 className="text-base font-bold text-navy mb-1">
               Envie o seu extrato de negociação da B3 (.xlsx ou .csv)
             </h4>
-            <p className="text-xs text-slate-400 max-w-md mx-auto mb-5">
+            <p className="text-xs text-muted max-w-md mx-auto mb-5">
               Acesse a <b>Área do Investidor da B3</b>, baixe o arquivo de negociação ou movimentação e anexe aqui.
             </p>
 
-            <label className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-gold to-[#E2A11B] text-navy-deep font-extrabold text-xs cursor-pointer shadow-md hover:from-gold-light hover:to-gold transition">
+            <label className="btn-gold inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs cursor-pointer shadow-md transition">
               <FileSpreadsheet className="h-4 w-4" />
               <span>{file ? file.name : 'Selecionar Arquivo da B3'}</span>
               <input
@@ -367,7 +367,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
             </label>
 
             {isProcessing && (
-              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gold font-bold">
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gold-deep font-bold">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Processando linhas do extrato...</span>
               </div>
@@ -376,19 +376,19 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
 
           {/* Pré-visualização com Edição e Deleção */}
           {previewData.length > 0 && (
-            <div className="rounded-2xl bg-navy-deep/80 border border-white/10 overflow-hidden space-y-4 p-5 shadow-xl">
+            <div className="rounded-2xl bg-white/85 border border-white/95 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)] overflow-hidden space-y-4 p-5">
               {/* Barra Superior de Ações */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-navy/10 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-bold text-white">
+                    <h4 className="text-sm font-bold text-navy">
                       Transações Prontas para Importar ({previewData.length})
                     </h4>
-                    <span className="text-[11px] text-slate-400">
-                      (Total Compras: <b className="text-emerald-400">R$ {totalComprasBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b> | Total Vendas: <b className="text-rose-400">R$ {totalVendasBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>)
+                    <span className="text-[11px] text-muted">
+                      (Total Compras: <b className="text-ok">R$ {totalComprasBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b> | Total Vendas: <b className="text-danger">R$ {totalVendasBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b>)
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-muted mt-0.5">
                     Você pode editar campos clicando no botão de lápis ou excluir linhas indesejadas antes de gravar.
                   </p>
                 </div>
@@ -396,13 +396,13 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                 <div className="flex flex-wrap items-center gap-2.5">
                   {/* Busca Rápida */}
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted" />
                     <input
                       type="text"
                       placeholder="Filtrar ticker..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 pr-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-gold w-36 sm:w-44"
+                      className="pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 border border-navy/15 text-xs text-navy placeholder-muted focus:outline-none focus:border-gold-deep w-36 sm:w-44"
                     />
                   </div>
 
@@ -410,9 +410,9 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                   <button
                     type="button"
                     onClick={handleAddNewRow}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/15 transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-navy text-xs font-bold border border-navy/15 shadow-sm transition"
                   >
-                    <Plus className="h-3.5 w-3.5 text-gold" />
+                    <Plus className="h-3.5 w-3.5 text-gold-deep" />
                     <span>Adicionar</span>
                   </button>
 
@@ -420,7 +420,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                   <button
                     type="button"
                     onClick={handleClearAll}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/30 transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-danger/10 hover:bg-danger/20 text-danger text-xs font-bold border border-danger/20 transition"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     <span>Limpar Tudo</span>
@@ -430,7 +430,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                   <button
                     type="button"
                     onClick={handleConfirmImport}
-                    className="flex items-center gap-2 px-5 py-2 rounded-xl bg-gold text-navy-deep font-extrabold text-xs shadow-lg hover:bg-gold-light transition"
+                    className="btn-gold flex items-center gap-2 px-5 py-2 rounded-xl font-extrabold text-xs shadow-md transition"
                   >
                     <span>Confirmar & Salvar ({previewData.length})</span>
                     <ArrowRight className="h-4 w-4" />
@@ -440,8 +440,8 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
 
               {/* Tabela Interativa de Registros */}
               <div className="overflow-x-auto max-h-[500px]">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-[#0b1b36] uppercase text-[10px] font-bold tracking-wider text-slate-400 sticky top-0 z-10 border-b border-white/10">
+                <table className="w-full text-left text-xs text-navy">
+                  <thead className="bg-slate-100/90 uppercase text-[10px] font-bold tracking-wider text-muted sticky top-0 z-10 border-b border-navy/10">
                     <tr>
                       <th className="px-3 py-3">Data</th>
                       <th className="px-3 py-3">Ticker</th>
@@ -454,20 +454,20 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                       <th className="px-3 py-3 text-center w-20">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 font-medium">
+                  <tbody className="divide-y divide-navy/5 font-medium">
                     {filteredData.map((t) => {
                       const isEditing = editingId === t.id;
 
                       if (isEditing) {
                         return (
-                          <tr key={t.id} className="bg-blue/10 border-2 border-gold/40">
+                          <tr key={t.id} className="bg-gold/10 border-2 border-gold-deep/40">
                             {/* Data */}
                             <td className="p-2">
                               <input
                                 type="date"
                                 value={editForm.date || ''}
                                 onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                                className="px-2 py-1 rounded bg-navy-deep border border-gold/60 text-xs text-white w-32 focus:outline-none"
+                                className="px-2 py-1 rounded bg-white border border-navy/20 text-xs text-navy w-32 focus:outline-none"
                               />
                             </td>
 
@@ -477,7 +477,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                                 type="text"
                                 value={editForm.ticker || ''}
                                 onChange={(e) => setEditForm({ ...editForm, ticker: e.target.value.toUpperCase() })}
-                                className="px-2 py-1 rounded bg-navy-deep border border-gold/60 text-xs text-gold font-black w-24 focus:outline-none uppercase"
+                                className="px-2 py-1 rounded bg-white border border-gold-deep text-xs text-gold-deep font-black w-24 focus:outline-none uppercase"
                               />
                             </td>
 
@@ -486,7 +486,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                               <select
                                 value={editForm.type || 'STOCK'}
                                 onChange={(e) => setEditForm({ ...editForm, type: e.target.value as AssetType })}
-                                className="px-2 py-1 rounded bg-navy-deep border border-gold/60 text-xs text-white focus:outline-none"
+                                className="px-2 py-1 rounded bg-white border border-navy/20 text-xs text-navy focus:outline-none"
                               >
                                 <option value="STOCK">Ação</option>
                                 <option value="FII">FII</option>
@@ -503,7 +503,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                               <select
                                 value={editForm.operation || 'BUY'}
                                 onChange={(e) => setEditForm({ ...editForm, operation: e.target.value as 'BUY' | 'SELL' })}
-                                className="px-2 py-1 rounded bg-navy-deep border border-gold/60 text-xs font-bold text-white focus:outline-none"
+                                className="px-2 py-1 rounded bg-white border border-navy/20 text-xs font-bold text-navy focus:outline-none"
                               >
                                 <option value="BUY">COMPRA</option>
                                 <option value="SELL">VENDA</option>
@@ -518,7 +518,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                                 step="any"
                                 value={editForm.quantity ?? ''}
                                 onChange={(e) => setEditForm({ ...editForm, quantity: parseFloat(e.target.value) || 0 })}
-                                className="px-2 py-1 rounded bg-navy-deep border border-gold/60 text-xs text-right text-white font-bold w-24 focus:outline-none"
+                                className="px-2 py-1 rounded bg-white border border-navy/20 text-xs text-right text-navy font-bold w-24 focus:outline-none"
                               />
                             </td>
 
@@ -530,12 +530,12 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                                 step="0.01"
                                 value={editForm.price ?? ''}
                                 onChange={(e) => setEditForm({ ...editForm, price: parseFloat(e.target.value) || 0 })}
-                                className="px-2 py-1 rounded bg-navy-deep border border-gold/60 text-xs text-right text-white font-bold w-24 focus:outline-none"
+                                className="px-2 py-1 rounded bg-white border border-navy/20 text-xs text-right text-navy font-bold w-24 focus:outline-none"
                               />
                             </td>
 
                             {/* Total Calculado */}
-                            <td className="p-2 text-right font-black text-emerald-400">
+                            <td className="p-2 text-right font-black text-ok">
                               R$ {(((editForm.quantity || 0) * (editForm.price || 0))).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
 
@@ -545,7 +545,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                                 type="text"
                                 value={editForm.broker || ''}
                                 onChange={(e) => setEditForm({ ...editForm, broker: e.target.value })}
-                                className="px-2 py-1 rounded bg-navy-deep border border-gold/60 text-xs text-slate-300 w-36 focus:outline-none"
+                                className="px-2 py-1 rounded bg-white border border-navy/20 text-xs text-navy w-36 focus:outline-none"
                               />
                             </td>
 
@@ -555,7 +555,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                                 <button
                                   type="button"
                                   onClick={() => handleSaveEdit(t.id)}
-                                  className="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition shadow"
+                                  className="p-1.5 rounded-lg bg-ok hover:opacity-90 text-white transition shadow"
                                   title="Salvar alterações"
                                 >
                                   <Check className="h-4 w-4" />
@@ -563,7 +563,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                                 <button
                                   type="button"
                                   onClick={handleCancelEdit}
-                                  className="p-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition shadow"
+                                  className="p-1.5 rounded-lg bg-slate-300 hover:bg-slate-400 text-navy transition shadow"
                                   title="Cancelar"
                                 >
                                   <X className="h-4 w-4" />
@@ -575,31 +575,31 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                       }
 
                       return (
-                        <tr key={t.id} className="hover:bg-white/5 transition group">
-                          <td className="px-3 py-2.5 text-slate-300">{t.date}</td>
-                          <td className="px-3 py-2.5 font-black text-white">{t.ticker}</td>
-                          <td className="px-3 py-2.5 text-slate-400">{t.type}</td>
+                        <tr key={t.id} className="hover:bg-navy/[0.03] transition group">
+                          <td className="px-3 py-2.5 text-navy">{t.date}</td>
+                          <td className="px-3 py-2.5 font-black text-navy">{t.ticker}</td>
+                          <td className="px-3 py-2.5 text-muted">{t.type}</td>
                           <td className="px-3 py-2.5">
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
                                 t.operation === 'BUY'
-                                  ? 'bg-emerald-500/20 text-emerald-400'
-                                  : 'bg-rose-500/20 text-rose-400'
+                                  ? 'bg-ok/10 text-ok border border-ok/20'
+                                  : 'bg-danger/10 text-danger border border-danger/20'
                               }`}
                             >
                               {t.operation === 'BUY' ? 'COMPRA' : 'VENDA'}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 text-right font-bold text-white">
+                          <td className="px-3 py-2.5 text-right font-bold text-navy">
                             {t.quantity.toLocaleString('pt-BR')}
                           </td>
-                          <td className="px-3 py-2.5 text-right text-slate-200">
+                          <td className="px-3 py-2.5 text-right text-navy">
                             R$ {t.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td className="px-3 py-2.5 text-right font-bold text-emerald-400">
+                          <td className="px-3 py-2.5 text-right font-bold text-ok">
                             R$ {(t.quantity * t.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td className="px-3 py-2.5 text-slate-400 text-[11px] truncate max-w-[180px]">
+                          <td className="px-3 py-2.5 text-muted text-[11px] truncate max-w-[180px]">
                             {t.broker || 'B3'}
                           </td>
                           <td className="px-3 py-2.5 text-center">
@@ -607,7 +607,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                               <button
                                 type="button"
                                 onClick={() => handleStartEdit(t)}
-                                className="p-1.5 rounded-lg bg-white/5 hover:bg-gold/20 text-slate-400 hover:text-gold transition"
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-gold/20 text-muted hover:text-gold-deep transition"
                                 title="Editar esta operação"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
@@ -615,7 +615,7 @@ export const B3IntegrationTab: React.FC<B3IntegrationTabProps> = ({ onImportSucc
                               <button
                                 type="button"
                                 onClick={() => handleDeleteRow(t.id)}
-                                className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition"
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-danger/20 text-muted hover:text-danger transition"
                                 title="Excluir operação"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />

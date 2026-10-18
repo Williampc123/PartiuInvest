@@ -1,3 +1,12 @@
 /node_modules
 /dist
 /release
+
+# Environment Variables & Secrets (CRÍTICO)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Temp tests
+_test_auto_*

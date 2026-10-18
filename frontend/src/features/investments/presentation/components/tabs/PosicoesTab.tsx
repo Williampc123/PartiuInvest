@@ -110,7 +110,10 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
   };
 
   const assetClasses = groupPositionsByClass(positions, totalValue);
-  const totalProfitBrl = totalValue - totalCost;
+  const totalVariationBrl = totalValue - totalCost;
+  const totalVariationPct = totalCost > 0 ? (totalVariationBrl / totalCost) * 100 : 0;
+  const totalReceivedDividends = positions.reduce((acc, p) => acc + (p.receivedDividends || 0), 0);
+  const totalProfitBrl = totalVariationBrl + totalReceivedDividends;
   const totalProfitPct = totalCost > 0 ? (totalProfitBrl / totalCost) * 100 : 0;
 
   // Destaques da Carteira Reais
@@ -127,117 +130,117 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
   const opportunities = positions.filter((p) => p.currentPrice < p.averagePrice);
 
   return (
-    <div className="space-y-5 text-slate-200">
+    <div className="space-y-5 text-navy">
       {/* 4 Cards Superiores com Dados Reais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* 1. Patrimônio Total */}
-        <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-            <span className="p-1 rounded bg-[#1C2538] text-slate-300">📊</span>
+        <div className="rounded-2xl bg-white/85 border border-white/95 p-4 flex flex-col justify-between shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)]">
+          <div className="flex items-center gap-2 text-xs font-bold text-muted">
+            <span className="p-1 rounded-lg bg-navy/5 text-navy">📊</span>
             <span>Patrimônio total</span>
           </div>
 
           <div className="my-2">
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-white">{fmt(totalValue)}</span>
+              <span className="text-2xl font-black text-navy">{fmt(totalValue)}</span>
               <span
                 className={`text-[11px] font-extrabold ${
-                  totalProfitPct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  totalVariationPct >= 0 ? 'text-ok' : 'text-danger'
                 }`}
               >
-                {totalProfitPct >= 0 ? '+' : ''}
-                {totalProfitPct.toFixed(2)}% {totalProfitPct >= 0 ? '▲' : '▼'}
+                {totalVariationPct >= 0 ? '+' : ''}
+                {totalVariationPct.toFixed(2)}% {totalVariationPct >= 0 ? '▲' : '▼'}
               </span>
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              Valor investido: <b className="text-slate-300">{fmt(totalCost)}</b>
+            <div className="text-[11px] text-muted mt-0.5">
+              Valor investido: <b className="text-navy">{fmt(totalCost)}</b>
             </div>
           </div>
         </div>
 
         {/* 2. Destaques da Carteira */}
-        <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-            <Trophy className="h-4 w-4 text-amber-400" />
+        <div className="rounded-2xl bg-white/85 border border-white/95 p-4 flex flex-col justify-between shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)]">
+          <div className="flex items-center gap-2 text-xs font-bold text-muted">
+            <Trophy className="h-4 w-4 text-gold-deep" />
             <span>Destaques da carteira</span>
           </div>
 
           <div className="my-2 grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-[10px] text-slate-400 block uppercase">Melhor posição</span>
+              <span className="text-[10px] text-muted block uppercase font-bold">Melhor posição</span>
               {bestPosition ? (
                 <>
-                  <b className="text-white block font-bold">{bestPosition.ticker}</b>
-                  <span className="text-emerald-400 font-extrabold text-xs">
+                  <b className="text-navy block font-black">{bestPosition.ticker}</b>
+                  <span className="text-ok font-extrabold text-xs">
                     +{bestPosition.profitPercentage.toFixed(2)}% ↗
                   </span>
                 </>
               ) : (
-                <span className="text-slate-500 font-bold">---</span>
+                <span className="text-muted font-bold">---</span>
               )}
             </div>
             <div>
-              <span className="text-[10px] text-slate-400 block uppercase">Pior posição</span>
+              <span className="text-[10px] text-muted block uppercase font-bold">Pior posição</span>
               {worstPosition ? (
                 <>
-                  <b className="text-white block font-bold">{worstPosition.ticker}</b>
+                  <b className="text-navy block font-black">{worstPosition.ticker}</b>
                   <span
                     className={`font-extrabold text-xs ${
-                      worstPosition.profitPercentage >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                      worstPosition.profitPercentage >= 0 ? 'text-ok' : 'text-danger'
                     }`}
                   >
                     {worstPosition.profitPercentage.toFixed(2)}% {worstPosition.profitPercentage >= 0 ? '↗' : '↘'}
                   </span>
                 </>
               ) : (
-                <span className="text-slate-500 font-bold">---</span>
+                <span className="text-muted font-bold">---</span>
               )}
             </div>
           </div>
         </div>
 
         {/* 3. Posições no Lucro */}
-        <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
+        <div className="rounded-2xl bg-white/85 border border-white/95 p-4 flex flex-col justify-between shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)]">
+          <div className="flex items-center justify-between text-xs font-bold text-muted">
             <div className="flex items-center gap-1.5">
-              <span className="p-1 rounded bg-[#1C2538] text-slate-300">📊</span>
+              <span className="p-1 rounded-lg bg-navy/5 text-navy">📊</span>
               <span>Posições no lucro</span>
             </div>
           </div>
 
           <div className="my-2">
             <div className="flex items-center gap-2">
-              <span className="text-xl font-black text-white">
+              <span className="text-xl font-black text-navy">
                 {profitablePositions.length} de {positions.length}
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-black text-[10px]">
+              <span className="px-2 py-0.5 rounded-full bg-ok/10 text-ok font-black text-[10px] border border-ok/20">
                 {profitablePct.toFixed(0)}%
               </span>
             </div>
 
             {/* Barra de Progresso Verde e Vermelha */}
-            <div className="h-2 w-full rounded-full bg-white/10 flex overflow-hidden my-2">
-              <div style={{ width: `${profitablePct}%` }} className="bg-emerald-400 h-full transition-all" />
-              <div style={{ width: `${100 - profitablePct}%` }} className="bg-rose-500 h-full transition-all" />
+            <div className="h-2 w-full rounded-full bg-navy/10 flex overflow-hidden my-2">
+              <div style={{ width: `${profitablePct}%` }} className="bg-ok h-full transition-all" />
+              <div style={{ width: `${100 - profitablePct}%` }} className="bg-danger h-full transition-all" />
             </div>
 
             <div className="flex items-center justify-between text-[11px] font-bold">
-              <span className="text-emerald-400">{profitablePositions.length} no lucro ▲</span>
-              <span className="text-rose-400">{unprofitablePositions.length} no prejuízo ▾</span>
+              <span className="text-ok">{profitablePositions.length} no lucro ▲</span>
+              <span className="text-danger">{unprofitablePositions.length} no prejuízo ▾</span>
             </div>
           </div>
         </div>
 
         {/* 4. Oportunidades de Compra */}
-        <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-4 flex flex-col justify-between shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-            <span className="p-1 rounded bg-[#1C2538] text-slate-300">🛒</span>
+        <div className="rounded-2xl bg-white/85 border border-white/95 p-4 flex flex-col justify-between shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.12)]">
+          <div className="flex items-center gap-2 text-xs font-bold text-muted">
+            <span className="p-1 rounded-lg bg-navy/5 text-navy">🛒</span>
             <span>Abaixo do P. Médio</span>
           </div>
 
           <div className="my-2">
-            <div className="text-xl font-black text-white">{opportunities.length} ativos</div>
-            <span className="text-[11px] text-slate-400 block mt-1">
+            <div className="text-xl font-black text-navy">{opportunities.length} ativos</div>
+            <span className="text-[11px] text-muted block mt-1">
               Ativos com cotação abaixo do custo médio
             </span>
           </div>
@@ -247,47 +250,47 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
       {/* Lista de Ativos com Grupos */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-black text-white">Meus Ativos ({positions.length})</h3>
+          <h3 className="text-base font-black text-navy">Meus Ativos ({positions.length})</h3>
         </div>
 
         {assetClasses.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {assetClasses.map((cls) => {
               const isExpanded = !!expandedClasses[cls.id];
               return (
                 <div
                   key={cls.id}
-                  className="rounded-2xl bg-[#141A26] border border-[#212B3E] overflow-hidden transition shadow-sm hover:border-[#2D3A54]"
+                  className="rounded-2xl bg-white/85 border border-white/95 overflow-hidden transition shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.10)] hover:border-navy/20"
                 >
                   <div
                     onClick={() => toggleExpand(cls.id)}
-                    className="p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 cursor-pointer hover:bg-[#182030] transition select-none"
+                    className="p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-3 cursor-pointer hover:bg-navy/[0.02] transition select-none"
                   >
                     <div className="flex items-center gap-3 min-w-[150px]">
-                      <span className="text-slate-500 font-mono text-xs">:::</span>
+                      <span className="text-muted/60 font-mono text-xs">:::</span>
                       <span
-                        className={`h-8 w-8 rounded-xl flex items-center justify-center font-black text-xs ${cls.iconColor}`}
+                        className={`h-8 w-8 rounded-xl flex items-center justify-center font-black text-xs ${cls.iconColor} shadow-xs`}
                       >
                         {cls.icon}
                       </span>
-                      <span className="font-bold text-white text-sm">{cls.name}</span>
+                      <span className="font-bold text-navy text-sm">{cls.name}</span>
                     </div>
 
                     <div className="text-center min-w-[50px]">
-                      <span className="text-[10px] text-slate-400 block uppercase">Ativos</span>
-                      <b className="text-white text-xs">{cls.count}</b>
+                      <span className="text-[10px] text-muted block uppercase font-bold">Ativos</span>
+                      <b className="text-navy text-xs font-black">{cls.count}</b>
                     </div>
 
                     <div className="text-right min-w-[100px]">
-                      <span className="text-[10px] text-slate-400 block uppercase">Valor total</span>
-                      <b className="text-white text-xs">{fmt(cls.totalValue)}</b>
+                      <span className="text-[10px] text-muted block uppercase font-bold">Valor total</span>
+                      <b className="text-navy text-xs font-black">{fmt(cls.totalValue)}</b>
                     </div>
 
                     <div className="text-right min-w-[85px]">
-                      <span className="text-[10px] text-slate-400 block uppercase">Variação</span>
+                      <span className="text-[10px] text-muted block uppercase font-bold">Variação</span>
                       <span
                         className={`text-xs font-bold ${
-                          cls.variationPct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          cls.variationPct >= 0 ? 'text-ok' : 'text-danger'
                         }`}
                       >
                         {cls.variationPct >= 0 ? '+' : ''}
@@ -296,10 +299,10 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                     </div>
 
                     <div className="text-right min-w-[95px]">
-                      <span className="text-[10px] text-slate-400 block uppercase">Rentabilidade</span>
+                      <span className="text-[10px] text-muted block uppercase font-bold">Rentabilidade</span>
                       <span
                         className={`text-xs font-extrabold ${
-                          cls.returnPct >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          cls.returnPct >= 0 ? 'text-ok' : 'text-danger'
                         }`}
                       >
                         {cls.returnPct >= 0 ? '+' : ''}
@@ -308,14 +311,14 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                     </div>
 
                     <div className="text-right min-w-[100px]">
-                      <span className="text-[10px] text-slate-400 block uppercase">% na carteira</span>
-                      <span className="text-xs font-bold text-slate-200 flex items-center justify-end gap-1">
-                        <Clock className="h-3 w-3 text-slate-400" />
+                      <span className="text-[10px] text-muted block uppercase font-bold">% na carteira</span>
+                      <span className="text-xs font-bold text-navy flex items-center justify-end gap-1">
+                        <Clock className="h-3 w-3 text-muted" />
                         {cls.currentPct.toFixed(1)}% / {cls.targetPct}%
                       </span>
                     </div>
 
-                    <div className="text-slate-400 pl-2">
+                    <div className="text-muted pl-2">
                       {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </div>
                   </div>
@@ -323,9 +326,9 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                   {isExpanded && (() => {
                     const isFii = cls.id === 'fii' || cls.id === 'reit';
                     return (
-                      <div className="bg-[#0D121B] border-t border-[#1E2638] p-4 animate-in fade-in duration-150 overflow-x-auto">
-                        <table className="w-full text-left text-xs text-slate-300 whitespace-nowrap">
-                          <thead className="uppercase text-[10px] text-slate-400 font-bold border-b border-white/5 select-none bg-[#0D121B]">
+                      <div className="bg-slate-50/70 border-t border-navy/10 p-4 animate-in fade-in duration-150 overflow-x-auto">
+                        <table className="w-full text-left text-xs text-navy whitespace-nowrap">
+                          <thead className="uppercase text-[10px] text-muted font-bold border-b border-navy/10 select-none bg-slate-100/50">
                             <tr>
                               {/* 1. Ativo */}
                               <th
@@ -509,19 +512,19 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-white/5">
+                          <tbody className="divide-y divide-navy/5">
                             {sortItems(cls.items).map((it) => (
-                              <tr key={it.ticker} className="hover:bg-white/5 transition">
+                              <tr key={it.ticker} className="hover:bg-navy/[0.03] transition">
                                 {/* 1. Ativo */}
-                                <td className="py-2.5 px-2 font-bold text-white">
+                                <td className="py-2.5 px-2 font-bold text-navy">
                                   <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded bg-[#1C2538] border border-[#2A3750] flex items-center justify-center text-[10px] font-black text-amber-400">
+                                    <div className="h-6 w-6 rounded-lg bg-navy/5 border border-navy/10 flex items-center justify-center text-[10px] font-black text-gold-deep">
                                       {it.ticker.slice(0, 2)}
                                     </div>
                                     <div>
-                                      <span className="font-bold text-white block">{it.ticker}</span>
+                                      <span className="font-bold text-navy block">{it.ticker}</span>
                                       {it.name !== it.ticker && (
-                                        <span className="text-[10px] text-slate-400 font-normal block max-w-[120px] truncate">
+                                        <span className="text-[10px] text-muted font-normal block max-w-[120px] truncate">
                                           {it.name}
                                         </span>
                                       )}
@@ -530,14 +533,14 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                                 </td>
 
                                 {/* 2. Quant. */}
-                                <td className="py-2.5 px-2 text-slate-200 font-medium">
+                                <td className="py-2.5 px-2 text-navy font-semibold">
                                   {it.qty.toLocaleString('pt-BR')}
                                 </td>
 
                                 {/* 3. Tipo (somente FIIs) */}
                                 {isFii && (
                                   <td className="py-2.5 px-2">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-[#1C2538] text-slate-300 border border-[#2B3952]">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-navy/5 text-navy border border-navy/10">
                                       {it.subType || 'Indefinido'}
                                     </span>
                                   </td>
@@ -545,14 +548,14 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
 
                                 {/* 4. Preço Médio */}
                                 <td className="py-2.5 px-2">
-                                  <span className="inline-flex items-center gap-1 text-slate-300">
+                                  <span className="inline-flex items-center gap-1 text-navy font-medium">
                                     {fmt(it.avgPrice)}
-                                    <Edit2 className="h-3 w-3 text-slate-500 hover:text-slate-300 cursor-pointer" />
+                                    <Edit2 className="h-3 w-3 text-muted hover:text-navy cursor-pointer" />
                                   </span>
                                 </td>
 
                                 {/* 5. Preço Atual */}
-                                <td className="py-2.5 px-2 font-bold text-white">
+                                <td className="py-2.5 px-2 font-black text-navy">
                                   {fmt(it.curPrice)}
                                 </td>
 
@@ -561,8 +564,8 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                                   <span
                                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
                                       it.variationPct >= 0
-                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                        ? 'bg-ok/10 text-ok border border-ok/20'
+                                        : 'bg-danger/10 text-danger border border-danger/20'
                                     }`}
                                   >
                                     {it.variationPct >= 0 ? '+' : ''}
@@ -575,8 +578,8 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                                   <span
                                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
                                       it.returnPct >= 0
-                                        ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                        : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                                        ? 'bg-ok/10 text-ok border border-ok/20'
+                                        : 'bg-danger/10 text-danger border border-danger/20'
                                     }`}
                                   >
                                     {it.returnPct >= 0 ? '+' : ''}
@@ -586,7 +589,7 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
 
                                 {/* 8. Vacância (somente FIIs) */}
                                 {isFii && (
-                                  <td className="py-2.5 px-2 text-slate-400">
+                                  <td className="py-2.5 px-2 text-muted font-medium">
                                     {it.vacancy !== undefined && it.vacancy !== null && it.vacancy > 0
                                       ? `${it.vacancy.toFixed(2)}%`
                                       : it.vacancy === 0
@@ -596,57 +599,57 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                                 )}
 
                                 {/* 9. Saldo */}
-                                <td className="py-2.5 px-2 font-black text-white">
+                                <td className="py-2.5 px-2 font-black text-navy">
                                   {fmt(it.total)}
                                 </td>
 
                                 {/* 10. Proventos Recebidos */}
-                                <td className="py-2.5 px-2 font-semibold text-emerald-400">
+                                <td className="py-2.5 px-2 font-bold text-ok">
                                   {it.receivedDividends > 0 ? fmt(it.receivedDividends) : 'R$ 0,00'}
                                 </td>
 
                                 {/* 11. P/VP (somente FIIs) */}
                                 {isFii && (
-                                  <td className="py-2.5 px-2 text-slate-300">
+                                  <td className="py-2.5 px-2 text-navy font-medium">
                                     {it.pvp ? it.pvp.toFixed(2) : '-'}
                                   </td>
                                 )}
 
                                 {/* 12. DY */}
-                                <td className="py-2.5 px-2 text-slate-300">
+                                <td className="py-2.5 px-2 text-navy font-medium">
                                   {it.dy ? `${it.dy.toFixed(2)}%` : '0,00%'}
                                 </td>
 
                                 {/* 13. Yield On Cost */}
-                                <td className="py-2.5 px-2 text-slate-300">
+                                <td className="py-2.5 px-2 text-navy font-medium">
                                   {it.yieldOnCost ? `${it.yieldOnCost.toFixed(2)}%` : '0,00%'}
                                 </td>
 
                                 {/* 14. Nota */}
                                 <td className="py-2.5 px-2">
-                                  <span className="inline-flex items-center justify-center h-5 w-6 rounded bg-[#1A2336] text-slate-200 text-[11px] font-bold border border-[#2B3952]">
+                                  <span className="inline-flex items-center justify-center h-5 w-6 rounded bg-navy/5 text-navy text-[11px] font-black border border-navy/10">
                                     {it.rating || 10}
                                   </span>
                                 </td>
 
                                 {/* 15. % Carteira */}
-                                <td className="py-2.5 px-2 text-slate-300">
+                                <td className="py-2.5 px-2 text-navy font-medium">
                                   {it.currentPct ? `${it.currentPct.toFixed(2)}%` : '0,00%'}
                                 </td>
 
                                 {/* 16. % Ideal */}
-                                <td className="py-2.5 px-2 text-slate-400">
+                                <td className="py-2.5 px-2 text-muted">
                                   {it.targetPct ? `${it.targetPct.toFixed(2)}%` : '0,00%'}
                                 </td>
 
                                 {/* 17. Comprar ? */}
                                 <td className="py-2.5 px-2">
                                   {it.shouldBuy ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/30">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-ok/10 text-ok border border-ok/20">
                                       <Check className="h-3 w-3" /> Sim
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800/80 text-slate-400 border border-slate-700/80">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-navy/5 text-muted border border-navy/10">
                                       <span className="text-[10px] opacity-70">⊘</span> Não
                                     </span>
                                   )}
@@ -656,7 +659,7 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
                                 <td className="py-2.5 px-2 text-center">
                                   <button
                                     type="button"
-                                    className="p-1 rounded hover:bg-slate-700/50 text-slate-400 hover:text-white transition"
+                                    className="p-1 rounded hover:bg-navy/10 text-muted hover:text-navy transition"
                                     title="Opções"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
@@ -674,10 +677,10 @@ export const PosicoesTab: React.FC<PosicoesTabProps> = ({
             })}
           </div>
         ) : (
-          <div className="rounded-2xl bg-[#141A26] border border-[#212B3E] p-8 text-center space-y-3">
-            <Layers className="h-8 w-8 text-slate-500 mx-auto" />
-            <h4 className="text-sm font-bold text-white">Nenhuma posição ativa</h4>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <div className="rounded-2xl bg-white/85 border border-white/95 p-8 text-center space-y-3 shadow-[inset_0_1px_0_#fff,0_8px_20px_-10px_rgba(10,31,68,.10)]">
+            <Layers className="h-8 w-8 text-navy/40 mx-auto" />
+            <h4 className="text-sm font-black text-navy">Nenhuma posição ativa</h4>
+            <p className="text-xs text-muted max-w-sm mx-auto">
               Cadastre suas compras de ativos para visualizar seus ganhos e destaques.
             </p>
           </div>

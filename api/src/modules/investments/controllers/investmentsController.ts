@@ -11,6 +11,7 @@ import {
   getMacroRates,
   getMarketAssetsList,
   getAssetDetails,
+  getAssetDividendsOnline,
 } from '../services/marketDataService.js';
 import { calculateMonthlyTaxes, generateAnnualDeclaration } from '../services/taxCalculationEngine.js';
 import { parseB3FileBuffer } from '../services/b3FileParserService.js';
@@ -76,6 +77,20 @@ export async function getAssetQuote(req: AuthenticatedRequest, res: Response) {
       return;
     }
     const data = await getAssetDetails(ticker, date);
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function getAssetDividends(req: AuthenticatedRequest, res: Response) {
+  try {
+    const ticker = req.params.ticker;
+    if (!ticker) {
+      res.status(400).json({ success: false, error: 'Ticker obrigatório' });
+      return;
+    }
+    const data = await getAssetDividendsOnline(ticker);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

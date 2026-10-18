@@ -23,6 +23,7 @@ exports.investmentsRoutes.get('/market/klines', investmentsController_js_1.getCr
 exports.investmentsRoutes.get('/market/indices', investmentsController_js_1.getIndices);
 exports.investmentsRoutes.get('/market/assets', investmentsController_js_1.getAssets);
 exports.investmentsRoutes.get('/market/quote/:ticker', investmentsController_js_1.getAssetQuote);
+exports.investmentsRoutes.get('/market/dividends/:ticker', investmentsController_js_1.getAssetDividends);
 // Middleware de Autenticação para rotas privadas
 exports.investmentsRoutes.use(auth_js_1.requireAuth);
 // 2. Recursos PRO: B3, Imposto de Renda e Análise com IA

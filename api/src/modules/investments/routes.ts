@@ -12,6 +12,7 @@ import {
   getIndices,
   getAssets,
   getAssetQuote,
+  getAssetDividends,
   uploadB3File,
   calculateTaxes,
   analyzePortfolioAI,
@@ -33,6 +34,7 @@ investmentsRoutes.get('/market/klines', getCryptoKlines);
 investmentsRoutes.get('/market/indices', getIndices);
 investmentsRoutes.get('/market/assets', getAssets);
 investmentsRoutes.get('/market/quote/:ticker', getAssetQuote);
+investmentsRoutes.get('/market/dividends/:ticker', getAssetDividends);
 
 // Middleware de Autenticação para rotas privadas
 investmentsRoutes.use(requireAuth);

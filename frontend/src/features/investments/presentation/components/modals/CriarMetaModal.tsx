@@ -100,21 +100,21 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
   return (
     <div className="fixed inset-0 z-[75] flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-navy/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-lg rounded-2xl bg-[#141A26] border border-[#27344D] p-6 shadow-2xl text-slate-200 animate-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white/95 backdrop-blur-xl border border-white/90 p-6 shadow-2xl text-navy animate-in zoom-in-95 duration-150">
         {/* ========================================================================= */}
-        {/* PASSO 1: ESCOLHA DO TIPO DE META (Idêntico à Imagem 1)                     */}
+        {/* PASSO 1: ESCOLHA DO TIPO DE META (Liquid Glass)                           */}
         {/* ========================================================================= */}
         {step === 'select' ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
-              <h3 className="text-base font-bold text-white">Criar Meta</h3>
+            <div className="flex items-center justify-between pb-3 border-b border-navy/10">
+              <h3 className="text-base font-bold text-navy">Criar Meta</h3>
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
+                className="p-1 rounded-lg text-muted hover:text-navy hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -124,16 +124,16 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
               {/* Opção 1: Meta de Patrimônio */}
               <div
                 onClick={() => handleSelectType('patrimonio')}
-                className="p-4 rounded-xl bg-[#0D121B] border border-[#212B3E] hover:border-slate-400 transition cursor-pointer flex items-start gap-4 group"
+                className="p-4 rounded-xl bg-slate-50/80 border border-navy/10 hover:border-gold-deep transition cursor-pointer flex items-start gap-4 group"
               >
-                <div className="h-10 w-10 rounded-xl bg-[#1A2234] border border-[#2B3852] flex items-center justify-center text-slate-300 shrink-0 group-hover:text-white">
+                <div className="h-10 w-10 rounded-xl bg-gold/15 border border-gold/30 flex items-center justify-center text-gold-deep shrink-0 group-hover:scale-105 transition">
                   <PiggyBank className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white group-hover:text-amber-400 transition">
+                  <h4 className="text-sm font-bold text-navy group-hover:text-gold-deep transition">
                     Meta de Patrimônio
                   </h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-xs text-muted mt-1 leading-relaxed">
                     Defina uma meta de patrimônio que melhor se alinhe com seu perfil de investimento e seus objetivos pessoais.
                   </p>
                 </div>
@@ -142,16 +142,16 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
               {/* Opção 2: Meta de Ativos */}
               <div
                 onClick={() => handleSelectType('ativos')}
-                className="p-4 rounded-xl bg-[#0D121B] border border-[#212B3E] hover:border-slate-400 transition cursor-pointer flex items-start gap-4 group"
+                className="p-4 rounded-xl bg-slate-50/80 border border-navy/10 hover:border-gold-deep transition cursor-pointer flex items-start gap-4 group"
               >
-                <div className="h-10 w-10 rounded-xl bg-[#1A2234] border border-[#2B3852] flex items-center justify-center text-slate-300 shrink-0 group-hover:text-white">
+                <div className="h-10 w-10 rounded-xl bg-gold/15 border border-gold/30 flex items-center justify-center text-gold-deep shrink-0 group-hover:scale-105 transition">
                   <Wallet className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white group-hover:text-amber-400 transition">
+                  <h4 className="text-sm font-bold text-navy group-hover:text-gold-deep transition">
                     Meta de Ativos
                   </h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-xs text-muted mt-1 leading-relaxed">
                     Estabeleça metas por tipos de ativos de acordo com seu perfil.
                   </p>
                 </div>
@@ -160,16 +160,16 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
               {/* Opção 3: Meta de Proventos */}
               <div
                 onClick={() => handleSelectType('proventos')}
-                className="p-4 rounded-xl bg-[#0D121B] border border-[#212B3E] hover:border-slate-400 transition cursor-pointer flex items-start gap-4 group"
+                className="p-4 rounded-xl bg-slate-50/80 border border-navy/10 hover:border-gold-deep transition cursor-pointer flex items-start gap-4 group"
               >
-                <div className="h-10 w-10 rounded-xl bg-[#1A2234] border border-[#2B3852] flex items-center justify-center text-slate-300 shrink-0 group-hover:text-white">
+                <div className="h-10 w-10 rounded-xl bg-gold/15 border border-gold/30 flex items-center justify-center text-gold-deep shrink-0 group-hover:scale-105 transition">
                   <Coins className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white group-hover:text-amber-400 transition">
+                  <h4 className="text-sm font-bold text-navy group-hover:text-gold-deep transition">
                     Meta de Proventos
                   </h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-xs text-muted mt-1 leading-relaxed">
                     Estabeleça a média de proventos que deseja receber mensalmente por tipo de ativo.
                   </p>
                 </div>
@@ -178,102 +178,102 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
           </div>
         ) : (
           /* ========================================================================= */
-          /* PASSO 2: FORMULÁRIOS ESPECÍFICOS POR TIPO DE META                         */
+          /* PASSO 2: FORMULÁRIOS ESPECÍFICOS POR TIPO DE META (Liquid Glass)          */
           /* ========================================================================= */
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Topo com Botão Voltar */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/5">
+            <div className="flex items-center justify-between pb-3 border-b border-navy/10">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
+                  className="p-1 rounded-lg text-muted hover:text-navy hover:bg-slate-100"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </button>
-                <h3 className="text-base font-bold text-white">Criar Meta</h3>
+                <h3 className="text-base font-bold text-navy">Criar Meta</h3>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/5"
+                className="p-1 rounded-lg text-muted hover:text-navy hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* FORMULÁRIO 1: META DE PATRIMÔNIO (Idêntico à Imagem 2) */}
+            {/* FORMULÁRIO 1: META DE PATRIMÔNIO */}
             {metaType === 'patrimonio' && (
               <div className="space-y-4">
-                <span className="inline-block px-2.5 py-1 rounded-md bg-[#182232] text-[11px] font-bold text-slate-300 border border-[#27344D]">
+                <span className="inline-block px-2.5 py-1 rounded-md bg-gold/15 text-[11px] font-bold text-gold-deep border border-gold/30">
                   Meta de Patrimônio
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                    <label className="block text-xs font-semibold text-muted mb-1.5">
                       Escolha uma categoria para sua meta
                     </label>
                     <div className="relative">
                       <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
-                        className="w-full appearance-none bg-[#0D121B] border border-[#212B3E] rounded-xl px-3.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-slate-400"
+                        className="w-full appearance-none bg-slate-50 border border-navy/15 rounded-xl px-3.5 py-2.5 text-xs text-navy font-medium focus:outline-none focus:border-gold-deep"
                       >
                         <option value="Total de patrimônio">Total de patrimônio</option>
                         <option value="Reserva de Emergência">Reserva de Emergência</option>
                         <option value="Liberdade Financeira">Liberdade Financeira</option>
                       </select>
-                      <ChevronDown className="h-4 w-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="h-4 w-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Valor total</label>
+                    <label className="block text-xs font-semibold text-muted mb-1.5">Valor total</label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">R$</span>
                       <input
                         type="number"
                         step="100"
                         required
                         value={totalTarget}
                         onChange={(e) => setTotalTarget(parseFloat(e.target.value) || 0)}
-                        className="w-full bg-[#0D121B] border border-[#212B3E] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:border-slate-400"
+                        className="w-full bg-slate-50 border border-navy/15 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-navy font-bold focus:outline-none focus:border-gold-deep"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <h4 className="text-xs font-bold text-slate-300 mb-2">Como você planeja alcançar essa meta?</h4>
+                  <h4 className="text-xs font-bold text-navy mb-2">Como você planeja alcançar essa meta?</h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Aporte mensal</label>
+                      <label className="block text-xs font-semibold text-muted mb-1.5">Aporte mensal</label>
                       <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">R$</span>
                         <input
                           type="number"
                           step="50"
                           value={monthlyDeposit}
                           onChange={(e) => setMonthlyDeposit(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-[#0D121B] border border-[#212B3E] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:border-slate-400"
+                          className="w-full bg-slate-50 border border-navy/15 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-navy font-bold focus:outline-none focus:border-gold-deep"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Estimativa de variação anual</label>
+                      <label className="block text-xs font-semibold text-muted mb-1.5">Estimativa de variação anual</label>
                       <div className="relative">
                         <input
                           type="number"
                           step="0.5"
                           value={annualVariation}
                           onChange={(e) => setAnnualVariation(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-[#0D121B] border border-[#212B3E] rounded-xl pl-3.5 pr-8 py-2.5 text-xs text-white font-bold focus:outline-none focus:border-slate-400"
+                          className="w-full bg-slate-50 border border-navy/15 rounded-xl pl-3.5 pr-8 py-2.5 text-xs text-navy font-bold focus:outline-none focus:border-gold-deep"
                         />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">%</span>
                       </div>
                     </div>
                   </div>
@@ -281,21 +281,21 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
               </div>
             )}
 
-            {/* FORMULÁRIO 2: META DE ATIVOS (Idêntico à Imagem 3) */}
+            {/* FORMULÁRIO 2: META DE ATIVOS */}
             {metaType === 'ativos' && (
               <div className="space-y-4">
-                <span className="inline-block px-2.5 py-1 rounded-md bg-[#182232] text-[11px] font-bold text-slate-300 border border-[#27344D]">
+                <span className="inline-block px-2.5 py-1 rounded-md bg-gold/15 text-[11px] font-bold text-gold-deep border border-gold/30">
                   Meta de ativos
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Tipo de ativo</label>
+                    <label className="block text-xs font-semibold text-muted mb-1.5">Tipo de ativo</label>
                     <div className="relative">
                       <select
                         value={assetType}
                         onChange={(e) => setAssetType(e.target.value)}
-                        className="w-full appearance-none bg-[#0D121B] border border-[#212B3E] rounded-xl px-3.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-slate-400"
+                        className="w-full appearance-none bg-slate-50 border border-navy/15 rounded-xl px-3.5 py-2.5 text-xs text-navy font-medium focus:outline-none focus:border-gold-deep"
                       >
                         <option value="Ações">Ações</option>
                         <option value="FIIs">FIIs</option>
@@ -304,17 +304,17 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                         <option value="ETFs Internacionais">ETFs Internacionais</option>
                         <option value="Criptomoedas">Criptomoedas</option>
                       </select>
-                      <ChevronDown className="h-4 w-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="h-4 w-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Ativo</label>
+                    <label className="block text-xs font-semibold text-muted mb-1.5">Ativo</label>
                     <div className="relative">
                       <select
                         value={ticker}
                         onChange={(e) => setTicker(e.target.value)}
-                        className="w-full appearance-none bg-[#0D121B] border border-[#212B3E] rounded-xl px-3.5 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-slate-400"
+                        className="w-full appearance-none bg-slate-50 border border-navy/15 rounded-xl px-3.5 py-2.5 text-xs text-navy font-medium focus:outline-none focus:border-gold-deep"
                       >
                         <option value="">Selecionar</option>
                         <option value="PETR4">PETR4 - Petrobras</option>
@@ -323,55 +323,55 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                         <option value="HGLG11">HGLG11 - CSHG Logística</option>
                         <option value="MXRF11">MXRF11 - Maxi Renda</option>
                       </select>
-                      <ChevronDown className="h-4 w-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <ChevronDown className="h-4 w-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-2">
-                  <h4 className="text-xs font-bold text-slate-300 mb-2">Como você planeja alcançar essa meta?</h4>
+                  <h4 className="text-xs font-bold text-navy mb-2">Como você planeja alcançar essa meta?</h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Aporte mensal</label>
+                      <label className="block text-xs font-semibold text-muted mb-1.5">Aporte mensal</label>
                       <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">R$</span>
                         <input
                           type="number"
                           step="50"
                           value={monthlyDeposit}
                           onChange={(e) => setMonthlyDeposit(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-[#0D121B] border border-[#212B3E] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:border-slate-400"
+                          className="w-full bg-slate-50 border border-navy/15 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-navy font-bold focus:outline-none focus:border-gold-deep"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Estimativa de variação anual</label>
+                      <label className="block text-xs font-semibold text-muted mb-1.5">Estimativa de variação anual</label>
                       <div className="relative">
                         <input
                           type="number"
                           step="0.5"
                           value={annualVariation}
                           onChange={(e) => setAnnualVariation(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-[#0D121B] border border-[#212B3E] rounded-xl pl-3.5 pr-8 py-2.5 text-xs text-white font-bold focus:outline-none focus:border-slate-400"
+                          className="w-full bg-slate-50 border border-navy/15 rounded-xl pl-3.5 pr-8 py-2.5 text-xs text-navy font-bold focus:outline-none focus:border-gold-deep"
                         />
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">%</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-3.5">
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Valor final da meta (R$)</label>
+                    <label className="block text-xs font-semibold text-muted mb-1.5">Valor final da meta (R$)</label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">R$</span>
                       <input
                         type="number"
                         step="100"
                         required
                         value={totalTarget}
                         onChange={(e) => setTotalTarget(parseFloat(e.target.value) || 0)}
-                        className="w-full bg-[#0D121B] border border-[#212B3E] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:border-slate-400"
+                        className="w-full bg-slate-50 border border-navy/15 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-navy font-bold focus:outline-none focus:border-gold-deep"
                       />
                     </div>
                   </div>
@@ -379,15 +379,15 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
               </div>
             )}
 
-            {/* FORMULÁRIO 3: META DE PROVENTOS (Idêntico à Imagem 4) */}
+            {/* FORMULÁRIO 3: META DE PROVENTOS */}
             {metaType === 'proventos' && (
               <div className="space-y-4">
-                <span className="inline-block px-2.5 py-1 rounded-md bg-[#182232] text-[11px] font-bold text-slate-300 border border-[#27344D]">
+                <span className="inline-block px-2.5 py-1 rounded-md bg-gold/15 text-[11px] font-bold text-gold-deep border border-gold/30">
                   Meta de proventos
                 </span>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-2">
+                  <label className="block text-xs font-semibold text-muted mb-2">
                     Selecione os tipos de ativos
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -396,8 +396,8 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                       onClick={() => toggleAssetType('acoes')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition ${
                         selectedTypes.acoes
-                          ? 'bg-[#1A2538] text-white border border-slate-400 shadow'
-                          : 'bg-[#0D121B] text-slate-500 border border-white/5'
+                          ? 'bg-navy text-white shadow'
+                          : 'bg-slate-100 text-muted border border-navy/10'
                       }`}
                     >
                       <span>💲 Ações</span>
@@ -409,8 +409,8 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                       onClick={() => toggleAssetType('fiis')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition ${
                         selectedTypes.fiis
-                          ? 'bg-[#1A2538] text-white border border-slate-400 shadow'
-                          : 'bg-[#0D121B] text-slate-500 border border-white/5'
+                          ? 'bg-navy text-white shadow'
+                          : 'bg-slate-100 text-muted border border-navy/10'
                       }`}
                     >
                       <span>🏢 FIIs</span>
@@ -422,8 +422,8 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                       onClick={() => toggleAssetType('stocks')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition ${
                         selectedTypes.stocks
-                          ? 'bg-[#1A2538] text-white border border-slate-400 shadow'
-                          : 'bg-[#0D121B] text-slate-500 border border-white/5'
+                          ? 'bg-navy text-white shadow'
+                          : 'bg-slate-100 text-muted border border-navy/10'
                       }`}
                     >
                       <span>🌎 Stocks</span>
@@ -435,8 +435,8 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                       onClick={() => toggleAssetType('bdrs')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition ${
                         selectedTypes.bdrs
-                          ? 'bg-[#1A2538] text-white border border-slate-400 shadow'
-                          : 'bg-[#0D121B] text-slate-500 border border-white/5'
+                          ? 'bg-navy text-white shadow'
+                          : 'bg-slate-100 text-muted border border-navy/10'
                       }`}
                     >
                       <span>📑 BDRs</span>
@@ -448,8 +448,8 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                       onClick={() => toggleAssetType('etfs')}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition ${
                         selectedTypes.etfs
-                          ? 'bg-[#1A2538] text-white border border-slate-400 shadow'
-                          : 'bg-[#0D121B] text-slate-500 border border-white/5'
+                          ? 'bg-navy text-white shadow'
+                          : 'bg-slate-100 text-muted border border-navy/10'
                       }`}
                     >
                       <span>🌐 ETFs Internacionais</span>
@@ -459,21 +459,21 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
                 </div>
 
                 <div className="pt-2">
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                  <label className="block text-xs font-semibold text-muted mb-1.5">
                     Média de proventos que deseja receber mensalmente
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">R$</span>
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">R$</span>
                     <input
                       type="number"
                       step="50"
                       required
                       value={totalTarget}
                       onChange={(e) => setTotalTarget(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-[#0D121B] border border-[#212B3E] rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-white font-bold focus:outline-none focus:border-slate-400"
+                      className="w-full bg-slate-50 border border-navy/15 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-navy font-bold focus:outline-none focus:border-gold-deep"
                     />
                   </div>
-                  <span className="block text-[11px] text-slate-500 mt-1">
+                  <span className="block text-[11px] text-muted mt-1">
                     ⓘ Consideramos a média de proventos recebidos nos últimos 12 meses.
                   </span>
                 </div>
@@ -481,18 +481,18 @@ export const CriarMetaModal: React.FC<CriarMetaModalProps> = ({
             )}
 
             {/* Rodapé de Ações */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-navy/10">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-muted hover:text-navy"
               >
                 Cancelar
               </button>
 
               <button
                 type="submit"
-                className="px-5 py-2.5 rounded-xl bg-[#1A2234] hover:bg-[#222C42] border border-[#2D3A54] text-xs font-bold text-white transition active:scale-95 shadow"
+                className="btn-gold px-5 py-2.5 rounded-xl text-xs font-bold shadow-md transition active:scale-95"
               >
                 Criar Meta
               </button>
