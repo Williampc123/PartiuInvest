@@ -15,10 +15,12 @@ import {
   ChevronRight,
   ShieldCheck,
   PiggyBank,
+  AlertTriangle,
 } from 'lucide-react';
 import { FinancialGoal } from '@/features/budget/infrastructure/budgetService';
 import { BoxGoal, BankAccount, FinancialTransaction } from '@/core/types';
 import { Money } from '@/core/Money';
+import { calculateGoalForecast } from '@/core/goalForecast';
 
 interface DashboardGoalsSectionProps {
   goals: FinancialGoal[];
@@ -94,36 +96,17 @@ export const DashboardGoalsSection: React.FC<DashboardGoalsSectionProps> = ({
     return currentGoal.originName || 'Origem';
   }, [currentGoal, boxes, accounts]);
 
-  // 3. Cálculos de progresso para "Valor em dinheiro total"
+  // 3. Cálculos de progresso e previsão para "Valor em dinheiro total"
   const totalAmountStats = useMemo(() => {
     if (!currentGoal || currentGoal.type !== 'total_amount') return null;
 
-    const targetCents = currentGoal.targetAmountCents || 0;
-    const currentCents = currentOriginBalanceCents;
-    const percent = targetCents > 0 ? (currentCents / targetCents) * 100 : 0;
-    const remainingCents = Math.max(0, targetCents - currentCents);
-
-    // Calcular dias restantes até a data alvo
-    let daysRemaining = null;
-    if (currentGoal.targetDate) {
-      const [y, m, d] = currentGoal.targetDate.split('-').map(Number);
-      const targetD = new Date(y, m - 1, d);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const diffTime = targetD.getTime() - today.getTime();
-      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    }
-
-    return {
-      targetCents,
-      currentCents,
-      percent: Math.min(100, Math.max(0, percent)),
-      rawPercent: percent,
-      remainingCents,
-      isCompleted: currentCents >= targetCents && targetCents > 0,
-      daysRemaining,
-    };
-  }, [currentGoal, currentOriginBalanceCents]);
+    return calculateGoalForecast({
+      goal: currentGoal,
+      currentBalanceCents: currentOriginBalanceCents,
+      transactions,
+      boxes,
+    });
+  }, [currentGoal, currentOriginBalanceCents, transactions, boxes]);
 
   // 4. Cálculos para "Investimentos mensais" (Navegação por Anos e Projeção Futura)
   const monthlyStats = useMemo(() => {
@@ -477,49 +460,170 @@ export const DashboardGoalsSection: React.FC<DashboardGoalsSectionProps> = ({
                   </div>
                 </div>
 
-                {/* Cards Informativos */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
-                  <div className="p-3.5 rounded-xl bg-navy/[0.02] border border-navy/10">
-                    <span className="text-[11px] font-semibold text-muted block">Status Atual</span>
-                    <b className="text-sm font-bold text-navy flex items-center gap-1.5 mt-0.5">
-                      {totalAmountStats.isCompleted ? (
-                        <>
-                          <CheckCircle2 className="h-4 w-4 text-ok" />
-                          <span className="text-ok">Meta Atingida!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="h-4 w-4 text-gold-deep" />
-                          <span>Em andamento</span>
-                        </>
-                      )}
-                    </b>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-navy/[0.02] border border-navy/10">
-                    <span className="text-[11px] font-semibold text-muted block">Faltam para atingir</span>
-                    <b className="text-sm font-bold text-navy mt-0.5 block">
-                      {totalAmountStats.remainingCents === 0
-                        ? 'R$ 0,00 (Concluída)'
-                        : Money.formatCents(totalAmountStats.remainingCents)}
-                    </b>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-navy/[0.02] border border-navy/10">
-                    <span className="text-[11px] font-semibold text-muted block">Prazo</span>
-                    <b className="text-sm font-bold text-navy mt-0.5 block">
-                      {totalAmountStats.daysRemaining !== null ? (
-                        totalAmountStats.daysRemaining > 0 ? (
-                          `${totalAmountStats.daysRemaining} dias restantes`
-                        ) : totalAmountStats.daysRemaining === 0 ? (
-                          'Vence hoje'
+                {/* Cards Informativos com Previsão */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3">
+                  <div className="p-3.5 rounded-xl bg-navy/[0.02] border border-navy/10 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-semibold text-muted block">Status Atual</span>
+                      <b className="text-sm font-bold text-navy flex items-center gap-1.5 mt-0.5">
+                        {totalAmountStats.isCompleted ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 text-ok" />
+                            <span className="text-ok">Meta Atingida!</span>
+                          </>
                         ) : (
-                          'Prazo encerrado'
-                        )
-                      ) : (
-                        'Sem data limite'
-                      )}
-                    </b>
+                          <>
+                            <Clock className="h-4 w-4 text-gold-deep" />
+                            <span>Em andamento</span>
+                          </>
+                        )}
+                      </b>
+                    </div>
+                    <span className="text-[10px] text-muted font-medium mt-2">
+                      {totalAmountStats.rawPercent.toFixed(1)}% do valor alvo
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-navy/[0.02] border border-navy/10 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-semibold text-muted block">Faltam para atingir</span>
+                      <b className="text-sm font-bold text-navy mt-0.5 block truncate">
+                        {totalAmountStats.remainingCents === 0
+                          ? 'R$ 0,00 (Concluída)'
+                          : Money.formatCents(totalAmountStats.remainingCents)}
+                      </b>
+                    </div>
+                    <span className="text-[10px] text-muted font-medium mt-2 truncate">
+                      Saldo: {Money.formatCents(totalAmountStats.currentCents)}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-navy/[0.02] border border-navy/10 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[11px] font-semibold text-muted block">Prazo</span>
+                      <b className="text-sm font-bold text-navy mt-0.5 block">
+                        {totalAmountStats.daysRemaining !== null ? (
+                          totalAmountStats.daysRemaining > 0 ? (
+                            `${totalAmountStats.daysRemaining} dias restantes`
+                          ) : totalAmountStats.daysRemaining === 0 ? (
+                            'Vence hoje'
+                          ) : (
+                            'Prazo encerrado'
+                          )
+                        ) : (
+                          'Sem data limite'
+                        )}
+                      </b>
+                    </div>
+                    <span className="text-[10px] text-muted font-medium mt-2 flex items-center gap-1">
+                      <Calendar className="h-3 w-3 text-muted" />
+                      <span>{currentGoal.targetDate ? currentGoal.targetDate.split('-').reverse().join('/') : 'Sem prazo'}</span>
+                    </span>
+                  </div>
+
+                  <div className={`p-3.5 rounded-xl border flex flex-col justify-between ${
+                    totalAmountStats.isCompleted
+                      ? 'bg-ok/5 border-ok/20'
+                      : totalAmountStats.willReachOnTime
+                      ? 'bg-emerald-500/5 border-emerald-500/20'
+                      : 'bg-amber-500/5 border-amber-500/20'
+                  }`}>
+                    <div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-semibold text-muted block">Previsão no Ritmo</span>
+                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                          totalAmountStats.statusBadge.variant === 'success'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : totalAmountStats.statusBadge.variant === 'warning'
+                            ? 'bg-amber-100 text-amber-800'
+                            : totalAmountStats.statusBadge.variant === 'danger'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-navy/10 text-navy'
+                        }`}>
+                          {totalAmountStats.statusBadge.label}
+                        </span>
+                      </div>
+                      <b className="text-sm font-bold mt-1 flex items-center gap-1.5">
+                        {totalAmountStats.isCompleted ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 text-ok shrink-0" />
+                            <span className="text-ok">Concluída!</span>
+                          </>
+                        ) : totalAmountStats.willReachOnTime ? (
+                          <>
+                            <TrendingUp className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span className="text-emerald-700">Atinge no prazo</span>
+                          </>
+                        ) : totalAmountStats.monthlyPaceCents > 0 ? (
+                          <>
+                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                            <span className="text-amber-700">Não atinge no prazo</span>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="h-4 w-4 text-navy/60 shrink-0" />
+                            <span className="text-navy">Ritmo insuficiente</span>
+                          </>
+                        )}
+                      </b>
+                    </div>
+                    <span className="text-[10px] text-muted font-medium mt-2 truncate">
+                      {totalAmountStats.isCompleted
+                        ? 'Meta 100% atingida'
+                        : totalAmountStats.estimatedCompletionDateStr
+                        ? `Previsão: ${totalAmountStats.estimatedCompletionDateStr}`
+                        : 'Sem projeção disponível'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Diagnóstico Detalhado da Previsão */}
+                <div className={`p-4 rounded-2xl border flex items-start gap-3.5 text-xs transition-all ${
+                  totalAmountStats.isCompleted
+                    ? 'bg-ok/5 border-ok/20 text-ok-deep'
+                    : totalAmountStats.willReachOnTime
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-950'
+                    : 'bg-amber-500/10 border-amber-500/20 text-amber-950'
+                }`}>
+                  <span className="grid h-8 w-8 place-items-center rounded-xl shrink-0 bg-white shadow-sm border border-navy/10">
+                    {totalAmountStats.isCompleted ? (
+                      <CheckCircle2 className="h-4 w-4 text-ok" />
+                    ) : totalAmountStats.willReachOnTime ? (
+                      <TrendingUp className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    )}
+                  </span>
+
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <b className="font-bold text-sm text-navy">{totalAmountStats.headline}</b>
+                    </div>
+                    <p className="text-xs text-muted leading-relaxed">
+                      {totalAmountStats.detailMessage}
+                    </p>
+
+                    {!totalAmountStats.isCompleted && (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1.5 text-[11px] font-medium text-navy/80 border-t border-navy/5 mt-2">
+                        <span>
+                          Ritmo atual:{' '}
+                          <b className="font-bold text-navy">
+                            {Money.formatCents(totalAmountStats.monthlyPaceCents)} / mês
+                          </b>
+                        </span>
+                        <span>
+                          Necessário para o prazo:{' '}
+                          <b className="font-bold text-gold-deep">
+                            {Money.formatCents(totalAmountStats.requiredMonthlyCents)} / mês
+                          </b>
+                        </span>
+                        {totalAmountStats.monthlyDeficitCents > 0 && (
+                          <span className="text-amber-700 font-bold">
+                            Diferença a poupar: +{Money.formatCents(totalAmountStats.monthlyDeficitCents)} / mês
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
