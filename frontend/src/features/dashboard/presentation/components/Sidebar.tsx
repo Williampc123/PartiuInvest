@@ -1,9 +1,9 @@
-import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { auth } from '@/infrastructure/firebase/firebase';
 import { signOut } from 'firebase/auth';
-import { X, LogOut, Sparkles, PieChart } from 'lucide-react';
+import { X, LogOut, Sparkles, PieChart, Calculator, ChevronDown } from 'lucide-react';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -20,6 +20,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, setUser, setIsInitialSetupOpen, setIsBudgetSetupOpen, setIsInvestmentsOpen } = useAppStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isCalculatorsActive = location.pathname.startsWith('/calculator') || location.pathname.startsWith('/calculadora');
+  const [isCalculatorsExpanded, setIsCalculatorsExpanded] = useState<boolean>(true);
 
   const handleLogout = async () => {
     try {
@@ -27,6 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     } catch {}
     localStorage.removeItem('partiu_jwt_token');
     localStorage.removeItem('partiu_last_user');
+    sessionStorage.removeItem('partiu_last_user');
     setUser(null);
     onClose?.();
     navigate('/');
@@ -181,6 +186,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </svg>
             <span className={isMobile ? 'inline' : 'md:max-xl:hidden'}>Partiu aprender</span>
           </NavLink>
+        </li>
+
+        {/* 9. Calculadoras (Menu com Submenu) */}
+        <li>
+          <div className="flex flex-col">
+            <button
+              type="button"
+              onClick={() => {
+                if (!isMobile && window.innerWidth >= 768 && window.innerWidth < 1280) {
+                  navigate('/calculators/compound-interest');
+                  handleNavClick();
+                } else {
+                  setIsCalculatorsExpanded((prev) => !prev);
+                }
+              }}
+              className={`menu-link w-full text-left cursor-pointer transition ${
+                isCalculatorsActive ? 'font-bold text-navy bg-gold/15' : ''
+              } ${isMobile ? '!justify-start !px-3.5' : ''}`}
+            >
+              <Calculator className="ico" />
+              <span className={`flex-1 ${isMobile ? 'inline' : 'md:max-xl:hidden'}`}>Calculadoras</span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
+                  isCalculatorsExpanded ? 'rotate-180' : ''
+                } ${isMobile ? 'inline' : 'md:max-xl:hidden'}`}
+              />
+            </button>
+
+            {/* Submenu Calculadoras */}
+            {isCalculatorsExpanded && (
+              <ul className={`mt-1 flex list-none flex-col gap-1 p-0 ${isMobile ? 'pl-7' : 'pl-4 xl:pl-6 md:max-xl:hidden'}`}>
+                <li>
+                  <NavLink
+                    to="/calculators/compound-interest"
+                    onClick={handleNavClick}
+                    className={({ isActive }) =>
+                      `relative flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                        isActive
+                          ? 'bg-gold/25 text-navy font-black shadow-xs'
+                          : 'text-[#3E4C6B] hover:bg-navy/5 hover:text-navy'
+                      }`
+                    }
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
+                    <span>Calculadora de juros compostos</span>
+                  </NavLink>
+                </li>
+              </ul>
+            )}
+          </div>
         </li>
       </ul>
     </nav>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../useAppStore';
 import {
@@ -10,13 +10,24 @@ import {
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setUser, setFamilyMembers, setBoxes, setAccounts, setIsOffline } = useAppStore();
+  const { user, setUser, setFamilyMembers, setBoxes, setAccounts, setIsOffline } = useAppStore();
+
+  // Auto-redireciona para o dashboard se o usuário já estiver autenticado/salvo
+  useEffect(() => {
+    if (user?.uid) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [familyName, setFamilyName] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [rememberMe, setRememberMe] = useState(() => {
+    const saved = localStorage.getItem('partiu_remember_me');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -82,7 +93,7 @@ export const LoginPage: React.FC = () => {
         setTimeout(() => navigate('/dashboard'), 500);
       } else {
         setStatusMsg('Validando credenciais com o Firebase...');
-        const result = await loginUser(email.trim(), senha);
+        const result = await loginUser(email.trim(), senha, rememberMe);
 
         setUser(result.user);
         if (result.familyMembers.length > 0) setFamilyMembers(result.familyMembers);
@@ -482,7 +493,16 @@ export const LoginPage: React.FC = () => {
                 {mode === 'login' && (
                   <div className="mb-[20px] mt-1 flex flex-wrap items-center justify-between gap-3">
                     <label className="flex cursor-pointer select-none items-center gap-2.5 text-[.88rem]">
-                      <input type="checkbox" name="lembrar" defaultChecked className="peer sr-only" />
+                      <input
+                        type="checkbox"
+                        name="lembrar"
+                        checked={rememberMe}
+                        onChange={(e) => {
+                          setRememberMe(e.target.checked);
+                          localStorage.setItem('partiu_remember_me', String(e.target.checked));
+                        }}
+                        className="peer sr-only"
+                      />
                       <span
                         aria-hidden="true"
                         className="grid h-[22px] w-[22px] place-items-center rounded-[7px] border-[1.5px] border-navy/30 bg-white/80 transition peer-checked:border-gold-deep peer-checked:bg-gold peer-focus-visible:outline peer-focus-visible:outline-[3px] peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold peer-checked:[&>svg]:opacity-100"

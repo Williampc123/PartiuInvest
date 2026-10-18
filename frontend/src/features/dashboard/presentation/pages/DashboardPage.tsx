@@ -10,6 +10,7 @@ import {
   formatPeriodLabel,
 } from '@/core/dateUtils';
 import { getEnrichedTransactionsForPeriod } from '@/core/transactionForecast';
+import { DashboardGoalsSection } from '@/features/dashboard/presentation/components/DashboardGoalsSection';
 
 export const DashboardPage: React.FC = () => {
   const {
@@ -23,6 +24,7 @@ export const DashboardPage: React.FC = () => {
     transactions,
     categories,
     budgetConfig,
+    setIsBudgetSetupOpen,
   } = useAppStore();
 
   const [periodRange, setPeriodRange] = useState<'1m' | '6m' | '1a'>('1a');
@@ -1060,6 +1062,16 @@ export const DashboardPage: React.FC = () => {
                 <b className="text-base text-navy">{totalBillsFormatted}</b>
               </div>
             </section>
+
+            {/* ============ Metas Financeiras (Abaixo dos 3 cards finais) ============ */}
+            <DashboardGoalsSection
+              goals={budgetConfig?.goals || []}
+              boxes={activeBoxes}
+              accounts={activeAccounts}
+              transactions={transactions}
+              totalNetWorthCents={totalNetWorthCents}
+              onOpenBudgetModal={() => setIsBudgetSetupOpen(true)}
+            />
     </div>
   );
 };

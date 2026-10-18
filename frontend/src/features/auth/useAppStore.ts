@@ -77,6 +77,17 @@ interface AppState {
 // Recuperar último usuário salvo na sessão local
 const getInitialUser = (): UserProfile | null => {
   try {
+    const rememberMeSetting = localStorage.getItem('partiu_remember_me');
+    // Se o usuário explicitamente escolheu não manter conectado, checar sessionStorage
+    if (rememberMeSetting === 'false') {
+      const sessionCached = sessionStorage.getItem('partiu_last_user');
+      if (sessionCached) {
+        const parsed = JSON.parse(sessionCached);
+        return parsed?.user || null;
+      }
+      return null;
+    }
+
     const cached = localStorage.getItem('partiu_last_user');
     if (cached) {
       const parsed = JSON.parse(cached);

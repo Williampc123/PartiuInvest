@@ -14,9 +14,27 @@ export interface BudgetAllocationItem {
   skippedMonths?: string[];
 }
 
+export type FinancialGoalType = 'total_amount' | 'monthly_investment';
+export type FinancialGoalOriginType = 'box' | 'account' | 'net_worth';
+
+export interface FinancialGoal {
+  id: string;
+  title: string;
+  type: FinancialGoalType;
+  targetAmountCents: number;
+  originType: FinancialGoalOriginType;
+  originId?: string;
+  originName?: string;
+  returnRateAnnual?: number;
+  targetDate: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface FamilyBudgetConfig {
   totalIncomeCents: number;
   items: BudgetAllocationItem[];
+  goals?: FinancialGoal[];
   updatedAt: string;
 }
 
@@ -40,12 +58,13 @@ function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
 }
 
 /**
- * Salva a configuração de separação de orçamento da família no Firestore
+ * Salva a configuração de separação de orçamento e metas da família no Firestore
  */
 export async function saveBudgetConfig(
   familyId: string,
   totalIncomeCents: number,
-  items: BudgetAllocationItem[]
+  items: BudgetAllocationItem[],
+  goals?: FinancialGoal[]
 ): Promise<void> {
   if (!familyId) return;
 
@@ -67,13 +86,69 @@ export async function saveBudgetConfig(
     return sanitizeForFirestore(itemObj);
   });
 
+  const cleanGoals = (goals || []).map((g) => {
+    const goalObj: FinancialGoal = {
+      id: g.id || `goal_${Date.now()}`,
+      title: g.title?.trim() || 'Meta Financeira',
+      type: g.type || 'total_amount',
+      targetAmountCents: Number(g.targetAmountCents) || 0,
+      originType: g.originType || 'net_worth',
+      targetDate: g.targetDate || '',
+    };
+    if (g.originId) goalObj.originId = g.originId;
+    if (g.originName) goalObj.originName = g.originName;
+    if (g.returnRateAnnual !== undefined) goalObj.returnRateAnnual = Number(g.returnRateAnnual);
+    if (g.createdAt) goalObj.createdAt = g.createdAt;
+    if (g.updatedAt) goalObj.updatedAt = g.updatedAt;
+    return sanitizeForFirestore(goalObj);
+  });
+
   const budgetConfig: FamilyBudgetConfig = {
     totalIncomeCents: Number(totalIncomeCents) || 0,
     items: cleanItems,
+    goals: cleanGoals,
     updatedAt: new Date().toISOString(),
   };
 
   await setDoc(familyRef, { budgetConfig: sanitizeForFirestore(budgetConfig) }, { merge: true });
+}
+
+/**
+ * Salva ou atualiza apenas a lista de metas financeiras da família no Firestore
+ */
+export async function saveFamilyGoals(
+  familyId: string,
+  goals: FinancialGoal[],
+  existingBudgetConfig?: FamilyBudgetConfig | null
+): Promise<void> {
+  if (!familyId) return;
+
+  const familyRef = doc(db, 'families', familyId);
+  const cleanGoals = (goals || []).map((g) => {
+    const goalObj: FinancialGoal = {
+      id: g.id || `goal_${Date.now()}`,
+      title: g.title?.trim() || 'Meta Financeira',
+      type: g.type || 'total_amount',
+      targetAmountCents: Number(g.targetAmountCents) || 0,
+      originType: g.originType || 'net_worth',
+      targetDate: g.targetDate || '',
+    };
+    if (g.originId) goalObj.originId = g.originId;
+    if (g.originName) goalObj.originName = g.originName;
+    if (g.returnRateAnnual !== undefined) goalObj.returnRateAnnual = Number(g.returnRateAnnual);
+    if (g.createdAt) goalObj.createdAt = g.createdAt;
+    goalObj.updatedAt = new Date().toISOString();
+    return sanitizeForFirestore(goalObj);
+  });
+
+  const updatedConfig: FamilyBudgetConfig = {
+    totalIncomeCents: existingBudgetConfig?.totalIncomeCents || 0,
+    items: existingBudgetConfig?.items || [],
+    goals: cleanGoals,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await setDoc(familyRef, { budgetConfig: sanitizeForFirestore(updatedConfig) }, { merge: true });
 }
 
 /**
