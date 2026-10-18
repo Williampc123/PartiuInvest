@@ -8,15 +8,23 @@ import {
   AlertTriangle,
   X,
   Wallet,
+  Target,
+  Edit2,
+  TrendingUp,
+  DollarSign,
+  Calendar,
 } from 'lucide-react';
 import { useAppStore } from '@/features/auth/useAppStore';
 import { Money } from '@/core/Money';
 import { getCategoryColor, getCategoryIconComponent } from '@/core/categories';
 import {
   BudgetAllocationItem,
+  FinancialGoal,
   saveBudgetConfig,
+  saveFamilyGoals,
   generateProvisionedBudgetExpenses,
 } from '@/features/budget/infrastructure/budgetService';
+import { FinancialGoalModal } from '@/features/budget/presentation/components/FinancialGoalModal';
 
 export interface BudgetAllocationFormItem {
   id: string;
@@ -61,6 +69,7 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
     user,
     familyMembers,
     accounts,
+    boxes,
     categories,
     transactions,
     budgetConfig,
@@ -77,6 +86,9 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
   // Permite override se não houver membros configurados ainda
   const [baseIncomeInput, setBaseIncomeInput] = useState('');
   const [items, setItems] = useState<BudgetAllocationFormItem[]>([]);
+  const [goals, setGoals] = useState<FinancialGoal[]>([]);
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<FinancialGoal | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -160,6 +172,13 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
       setBaseIncomeInput((budgetConfig.totalIncomeCents / 100).toFixed(2).replace('.', ','));
     } else {
       setBaseIncomeInput((prev) => prev || '');
+    }
+
+    // Carregar Metas Financeiras se existirem
+    if (budgetConfig?.goals && Array.isArray(budgetConfig.goals)) {
+      setGoals(budgetConfig.goals);
+    } else {
+      setGoals([]);
     }
 
     // Se já existirem itens salvos no Firestore, carrega a configuração da família
@@ -328,6 +347,53 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
     setItems((prev) => prev.filter((i) => i.id !== id));
   };
 
+  // Gerenciamento de Metas Financeiras
+  const handleOpenNewGoalModal = () => {
+    setEditingGoal(null);
+    setIsGoalModalOpen(true);
+  };
+
+  const handleEditGoal = (goal: FinancialGoal) => {
+    setEditingGoal(goal);
+    setIsGoalModalOpen(true);
+  };
+
+  const handleSaveGoal = (savedGoal: FinancialGoal) => {
+    setGoals((prev) => {
+      const exists = prev.some((g) => g.id === savedGoal.id);
+      const updated = exists
+        ? prev.map((g) => (g.id === savedGoal.id ? savedGoal : g))
+        : [...prev, savedGoal];
+
+      if (user?.familyId) {
+        saveFamilyGoals(user.familyId, updated, budgetConfig);
+        setBudgetConfig({
+          totalIncomeCents: effectiveTotalIncomeCents,
+          items: budgetConfig?.items || [],
+          goals: updated,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return updated;
+    });
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    setGoals((prev) => {
+      const updated = prev.filter((g) => g.id !== goalId);
+      if (user?.familyId) {
+        saveFamilyGoals(user.familyId, updated, budgetConfig);
+        setBudgetConfig({
+          totalIncomeCents: effectiveTotalIncomeCents,
+          items: budgetConfig?.items || [],
+          goals: updated,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return updated;
+    });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.familyId) return;
@@ -363,13 +429,14 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
         })
         .filter((it) => it.categoryName && it.amountCents > 0);
 
-      // 1. Salva a configuração de orçamento no documento da família
-      await saveBudgetConfig(user.familyId, effectiveTotalIncomeCents, cleanItems);
+      // 1. Salva a configuração de orçamento e metas no documento da família
+      await saveBudgetConfig(user.familyId, effectiveTotalIncomeCents, cleanItems, goals);
 
       // 2. Atualiza imediatamente o store local de budgetConfig
       const newBudgetConfig = {
         totalIncomeCents: effectiveTotalIncomeCents,
         items: cleanItems,
+        goals: goals,
         updatedAt: new Date().toISOString(),
       };
       setBudgetConfig(newBudgetConfig);
@@ -722,6 +789,140 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
                   <span>+ Adicionar Categoria de Despesa</span>
                 </button>
               </div>
+
+              {/* Bloco 4: Metas Financeiras */}
+              <div className="pt-2 space-y-3">
+                <div className="flex items-center justify-between border-t border-navy/10 pt-4">
+                  <div className="flex items-center gap-2">
+                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-gold/25 text-gold-deep border border-gold/40 shrink-0">
+                      <Target className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-black text-navy uppercase tracking-wider">
+                          Metas Financeiras
+                        </label>
+                        <span className="pill bg-gold/20 text-gold-deep text-[10px] font-extrabold px-1.5 py-0.5">
+                          {goals.length} {goals.length === 1 ? 'meta' : 'metas'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted">
+                        Defina metas de montante total ou aportes mensais para acompanhar no Dashboard.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenNewGoalModal}
+                    className="btn-gold text-[11px] h-8 px-3 gap-1.5 font-bold shadow-sm"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Nova Meta</span>
+                  </button>
+                </div>
+
+                {/* Listagem de Metas Cadastradas */}
+                {goals.length === 0 ? (
+                  <div className="p-4 rounded-2xl border border-dashed border-navy/20 bg-navy/[0.01] text-center space-y-2">
+                    <p className="text-xs text-muted">
+                      Nenhuma meta financeira cadastrada no momento.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleOpenNewGoalModal}
+                      className="btn-line text-xs h-8 px-3 mx-auto gap-1.5 border-dashed border-gold/60 text-navy hover:bg-gold/10 font-bold"
+                    >
+                      <Plus className="h-3.5 w-3.5 text-gold-deep" />
+                      <span>Inserir primeira meta financeira</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {goals.map((g) => {
+                      const isMonthly = g.type === 'monthly_investment';
+                      return (
+                        <div
+                          key={g.id}
+                          className="p-3 rounded-2xl border border-navy/10 bg-white hover:border-gold/50 transition-all flex flex-col justify-between gap-2 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2.5 min-w-0">
+                              <span
+                                className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
+                                  isMonthly ? 'bg-gold/20 text-gold-deep border border-gold/40' : 'bg-navy/10 text-navy'
+                                }`}
+                              >
+                                {isMonthly ? <TrendingUp className="h-4 w-4" /> : <DollarSign className="h-4 w-4" />}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <b className="text-xs font-bold text-navy truncate block">{g.title}</b>
+                                  <span
+                                    className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase ${
+                                      isMonthly ? 'bg-gold/20 text-gold-deep' : 'bg-navy/10 text-navy'
+                                    }`}
+                                  >
+                                    {isMonthly ? 'Aporte Mensal' : 'Dinheiro Total'}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-muted block truncate mt-0.5">
+                                  {g.originName || (g.originType === 'net_worth' ? 'Patrimônio Total' : 'Origem vinculada')}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditGoal(g)}
+                                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted hover:text-navy hover:bg-navy/5 transition"
+                                title="Editar meta"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteGoal(g.id)}
+                                className="h-7 w-7 rounded-lg flex items-center justify-center text-muted hover:text-danger hover:bg-danger/10 transition"
+                                title="Excluir meta"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-navy/5 text-xs">
+                            <div>
+                              <span className="text-[10px] text-muted block">
+                                {isMonthly ? 'Aporte alvo:' : 'Montante alvo:'}
+                              </span>
+                              <b className="text-xs font-extrabold text-navy">
+                                {Money.formatCents(g.targetAmountCents)}
+                                {isMonthly && <span className="text-[10px] text-muted font-normal"> / mês</span>}
+                              </b>
+                            </div>
+
+                            <div className="text-right">
+                              <span className="text-[10px] text-muted block">Até:</span>
+                              <b className="text-[11px] font-semibold text-navy">
+                                {g.targetDate ? g.targetDate.split('-').reverse().join('/') : 'Sem prazo'}
+                              </b>
+                            </div>
+                          </div>
+
+                          {isMonthly && g.returnRateAnnual !== undefined && (
+                            <div className="text-[10px] font-medium text-gold-deep bg-gold/10 px-2 py-0.5 rounded-lg flex items-center justify-between">
+                              <span>Taxa de retorno estimada:</span>
+                              <b>{g.returnRateAnnual}% a.a.</b>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Rodapé de Ações */}
@@ -749,6 +950,19 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({ isOpen, onCl
             </div>
           </form>
         )}
+
+        {/* Modal Secundária de Configuração de Metas */}
+        <FinancialGoalModal
+          isOpen={isGoalModalOpen}
+          onClose={() => {
+            setIsGoalModalOpen(false);
+            setEditingGoal(null);
+          }}
+          onSaveGoal={handleSaveGoal}
+          editingGoal={editingGoal}
+          boxes={boxes}
+          accounts={accounts}
+        />
       </div>
     </div>
   );

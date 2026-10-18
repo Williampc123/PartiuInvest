@@ -10,6 +10,7 @@ import { TransactionsPage } from './features/transactions/presentation/pages/Tra
 import { CategoriesPage } from './features/categories/presentation/pages/CategoriesPage';
 import { LearningPage } from './features/learning/presentation/pages/LearningPage';
 import { InvestmentsPage } from './features/investments/presentation/pages/InvestmentsPage';
+import { CompoundInterestPage } from './features/calculators/presentation/pages/CompoundInterestPage';
 import { useAppStore } from './features/auth/useAppStore';
 
 export const App: React.FC = () => {
@@ -43,7 +44,11 @@ export const App: React.FC = () => {
           <Route path="/family" element={<FamilyMembersPage />} />
           <Route path="/learning" element={<LearningPage />} />
           <Route path="/investments" element={<InvestmentsPage />} />
+          <Route path="/calculators/compound-interest" element={<CompoundInterestPage />} />
+          <Route path="/calculadoras/juros-compostos" element={<CompoundInterestPage />} />
           {/* Redirecionamento amigável */}
+          <Route path="/calculators" element={<Navigate to="/calculators/compound-interest" replace />} />
+          <Route path="/calculadoras" element={<Navigate to="/calculadoras/juros-compostos" replace />} />
           <Route path="/investimentos" element={<Navigate to="/investments" replace />} />
           <Route path="/movimentacoes" element={<Navigate to="/transactions" replace />} />
           <Route path="/categorias" element={<Navigate to="/categories" replace />} />

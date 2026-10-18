@@ -104,11 +104,21 @@ export function getFirebaseErrorMessage(error: any): string {
 /**
  * Helper para salvar sessão localmente
  */
-function saveLocalUser(user: UserProfile, members: FamilyMember[], boxes: BoxGoal[]) {
+function saveLocalUser(user: UserProfile, members: FamilyMember[], boxes: BoxGoal[], rememberMe: boolean = true) {
   try {
     const key = `partiu_family_${user.familyId}`;
-    localStorage.setItem(key, JSON.stringify({ user, members, boxes }));
-    localStorage.setItem('partiu_last_user', JSON.stringify({ user, members, boxes }));
+    const payload = JSON.stringify({ user, members, boxes });
+
+    localStorage.setItem('partiu_remember_me', String(rememberMe));
+    localStorage.setItem(key, payload);
+
+    if (rememberMe) {
+      localStorage.setItem('partiu_last_user', payload);
+      sessionStorage.removeItem('partiu_last_user');
+    } else {
+      localStorage.removeItem('partiu_last_user');
+      sessionStorage.setItem('partiu_last_user', payload);
+    }
   } catch {
     // Ignore storage quota
   }
@@ -285,7 +295,7 @@ export async function registerFamilyAndHead(
 /**
  * Autentica o usuário diretamente na collection `users` do Firestore
  */
-export async function loginUser(rawEmail: string, pass: string): Promise<AuthSuccessResult> {
+export async function loginUser(rawEmail: string, pass: string, rememberMe: boolean = true): Promise<AuthSuccessResult> {
   const emailLower = rawEmail.toLowerCase().trim();
   const emailOriginal = rawEmail.trim();
 
@@ -371,7 +381,7 @@ export async function loginUser(rawEmail: string, pass: string): Promise<AuthSuc
     isMinor: !!userData.isMinor,
   };
 
-  saveLocalUser(userProfile, familyMembers, boxes);
+  saveLocalUser(userProfile, familyMembers, boxes, rememberMe);
 
   return {
     user: userProfile,
